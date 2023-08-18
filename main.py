@@ -29,7 +29,9 @@ from TS_model import pdm_ts_model
 from ML_model import pdm_ml_model
 #fault mapping
 from Fault_Mapping import Faults_Mapping
-
+import yaml
+with open('cbm_yaml.yml','r') as file:
+    utility_dict = yaml.safe_load(file)
 
 app = FastAPI()
 
@@ -40,21 +42,21 @@ model.load_state_dict(torch.load('./utils/AE/model/model_02082023.pt', map_locat
 model.eval()
 
 #TS model loading
-ts_features_file = pd.read_csv('./utils/TS_model/final_feats.csv')
-ts_model = './utils/TS_model/TS_model.h5' #load ts model here
-x_scale = './utils/TS_model/TS_X.joblib'#load X_scaler model here
-y_scale = './utils/TS_model/TS_Y.joblib'#load Y_scaler model here
-engine_normalized = False
-engine_number = '2'
-ts_res_loc = './utils/TS_model/results/'
+ts_features_file = pd.read_csv(utility_dict['imp_feats_path'])
+ts_model =  utility_dict['TS_model_path']#load ts model here
+x_scale = utility_dict['TS_scale_x']#load X_scaler model here
+y_scale = utility_dict['TS_scale_y']#load Y_scaler model here
+engine_normalized = utility_dict['bool']
+engine_number = utility_dict['engine_number']
+ts_res_loc = utility_dict['ts_res_loc']
 TS = pdm_ts_model(ts_features_file, ts_model,x_scale,y_scale,engine_normalized,engine_number,ts_res_loc)
 
 
 #ML model loading
-Efd_features = ['Pscav','Pcomp','Pmax','Texh','Ntc','Ntc_Pscav','Pcomp_Pscav','PR']
-engine_normalized = False
-ml_res_loc = './utils/ML_model/results/'
+Efd_features = utility_dict['efd_features']
+ml_res_loc = utility_dict['ml_res_loc']
 ML = pdm_ml_model(Efd_features,engine_normalized,ts_res_loc,engine_number,ml_res_loc)
+
 
 
 app.add_middleware(
@@ -103,13 +105,13 @@ def data_preprocess(raw_data_path):
     df = pd.read_csv(raw_data_path, index_col='signaldate')
     df = df[(df['Estimated engine load'] >= 30) & (df['Estimated engine load'] <= 100)]
     #last 336 datapoints
-    df = df.iloc[-336:,:]
+    df = df.iloc[-utility_dict['look_back']:,:]
     return df
 
 @app.post("/forecast-14days")
 async def forecast_14days(current_user: User = Depends(get_current_active_user)):
     start_time = time.time()
-    data = pd.read_csv('./test_data/test_data_14.csv', index_col='signaldate')
+    data = pd.read_csv(utility_dict['forecast_data_path'], index_col=utility_dict['index'])
     
 
     #-------------------> TS_model calling
@@ -118,7 +120,7 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
 
     #-------------------> AUTOENCODE
     #data preprocessing
-    df = data_load_preprocess('./test_data/test_data_14.csv')
+    df = data_load_preprocess(utility_dict['preprocess_data_path'])
     df_norm_obj_test = Transform_data(df)
     df_norm_test = df_norm_obj_test.normalize()
     #final data for model
@@ -140,9 +142,9 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
 
     #-------------------> Fault mapping
     final_indx = [pd.Timestamp(TS_result)+pd.Timedelta(tim,'h') for tim in range(1,TS.forecast_horizon+1)] #for getting timestamps for forecast period, here delta is hourly based
-    fault_mat_loc = './utils/Fault_Matrix/Fault_matrix.xlsx'
-    p=.2 #weight value for kpi calculations
-    mapping_loc = './utils/Fault_Matrix/results/'
+    fault_mat_loc = utility_dict['f_mat_path']
+    p=utility_dict['p_value'] #weight value for kpi calculations
+    mapping_loc = utility_dict['map_path']
     output_dict = {}
     for i in range(1,ML.cyl_count+1):#------------ML.cyl_count+1
         ml_ress = pd.read_csv(ml_res_loc+'ENG_2_TS_ML_res_Cyl_{}.csv'.format(str(i)),index_col=False)
@@ -151,9 +153,7 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
         ml_ress = pd.concat([ml_ress,ff1[fault_ids]],axis=1)
         ml_ress['Date Time'] = final_indx
         #for ordering columns
-        ml_ress = ml_ress[['Date Time','Estimated engine load','matched_load','matched_date','deltas','TS_Pcomp','TS_Pscav','TS_Texh','TS_Ntc','TS_Pmax','TS_PR','TS_Ntc_Pscav',
-                        'TS_Pcomp_Pscav','Ref_Pcomp','Ref_Pscav','Ref_Texh','Ref_Ntc','Ref_Pmax','Ref_PR','Ref_Ntc_Pscav','Ref_Pcomp_Pscav',
-                        'InjSysFault','StaInjLate','StaInjEarly','ExhValvLeak','BloCombChabr','ExhValEarOpn','ExhValLatOpn','ExhValEarlClos','ExhValLatClos']]
+        ml_ress = ml_ress[utility_dict['end_res_colorder']]
         ml_ress.to_excel(mapping_loc+'mapping_res_cyl{}.xlsx'.format(i),index=False)
         output_dict['Cyl_'+str(i)] = ml_ress.to_dict(orient='list')
     # df_res_cyl_1 = pd.read_excel(mapping_loc+'mapping_res_cyl1.xlsx')

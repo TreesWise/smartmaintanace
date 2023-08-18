@@ -298,11 +298,11 @@ warnings.filterwarnings('ignore')
 
 
 #time series model
-from TS_model1 import pdm_ts_model
+from TS_model import pdm_ts_model
 #ml model
-from ML_model1 import pdm_ml_model
+from ML_model import pdm_ml_model
 #fault mapping
-from Fault_Mapping1 import Faults_Mapping
+from Fault_Mapping import Faults_Mapping
 import yaml
 
 with open('cbm_yaml.yml','r') as file:

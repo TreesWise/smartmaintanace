@@ -1,0 +1,138 @@
+imp_features:
+  Pscav:
+    Limits:
+      L_limit: -10
+      U_limit: 10
+    imp_feature: './utils/ML_model/imp_features/Pscav.csv'
+    imp_feature_n: 24
+  Pcomp:
+    Limits:
+      L_limit: -8
+      U_limit: 8
+    imp_feature: './utils/ML_model/imp_features/Pcomp.csv'
+    imp_feature_n: 26
+  Pmax:
+    Limits:
+      L_limit: -8
+      U_limit: 8
+    imp_feature: './utils/ML_model/imp_features/Pmax.csv'
+    imp_feature_n: 27
+  Texh:
+    Limits:
+      L_limit: -8
+      U_limit: 8
+    imp_feature: './utils/ML_model/imp_features/Texh.csv'
+    imp_feature_n: 24
+  Ntc:
+    Limits:
+      L_limit: -8
+      U_limit: 8
+    imp_feature: './utils/ML_model/imp_features/Ntc.csv'
+    imp_feature_n: 23
+  Ntc_Pscav:
+    Limits:
+      L_limit: -8
+      U_limit: 8
+    imp_feature: './utils/ML_model/imp_features/Ntc_Pscav.csv'  
+    imp_feature_n: 24 
+  Pcomp_Pscav:
+    Limits:
+      L_limit: -10
+      U_limit: 10
+    imp_feature: './utils/ML_model/imp_features/Pcomp_Pscav.csv'
+    imp_feature_n: 24
+  PR:
+    Limits:
+      L_limit: -15
+      U_limit: 15
+    imp_feature: './utils/ML_model/imp_features/PR.csv'
+    imp_feature_n: 26
+
+
+load_limit: 5
+max_load: 84.19076333333332    
+cyl_count: 6
+efd_features: ['Pcomp_Pscav','PR','Pmax','Ntc','Ntc_Pscav','Pcomp','Pscav','Texh'] 
+#scaling and ml models
+Pcomp_Pscav_scaler_x: ./utils/ML_model/features_scaler/Pcomp_Pscav_X.joblib    
+Pcomp_Pscav_scaler_y: ./utils/ML_model/features_scaler/Pcomp_Pscav_Y.joblib
+Pcomp_Pscav_ml_model: ./utils/ML_model/model/Pcomp_Pscav.keras
+
+PR_scaler_x: ./utils/ML_model/features_scaler/PR_X.joblib
+PR_scaler_y: ./utils/ML_model/features_scaler/PR_Y.joblib
+PR_ml_model: ./utils/ML_model/model/PR.keras
+
+Ntc_Pscav_scaler_x: ./utils/ML_model/features_scaler/Ntc_Pscav_X.joblib
+Ntc_Pscav_scaler_y: ./utils/ML_model/features_scaler/Ntc_Pscav_Y.joblib
+Ntc_Pscav_ml_model: ./utils/ML_model/model/Ntc_Pscav.keras
+
+Pmax_scaler_x: ./utils/ML_model/features_scaler/Pmax_X.joblib
+Pmax_scaler_y: ./utils/ML_model/features_scaler/Pmax_Y.joblib
+Pmax_ml_model: ./utils/ML_model/model/Pmax.keras
+
+Texh_scaler_x: ./utils/ML_model/features_scaler/Texh_X.joblib
+Texh_scaler_y: ./utils/ML_model/features_scaler/Texh_Y.joblib
+Texh_ml_model: ./utils/ML_model/model/Texh.keras
+
+Ntc_scaler_x: ./utils/ML_model/features_scaler/Ntc_X.joblib
+Ntc_scaler_y: ./utils/ML_model/features_scaler/Ntc_Y.joblib
+Ntc_ml_model: ./utils/ML_model/model/Ntc.keras
+
+Pcomp_scaler_x: ./utils/ML_model/features_scaler/Pcomp_X.joblib
+Pcomp_scaler_y: ./utils/ML_model/features_scaler/Pcomp_Y.joblib
+Pcomp_ml_model: ./utils/ML_model/model/Pcomp.keras
+
+Pscav_scaler_x: ./utils/ML_model/features_scaler/Pscav_X.joblib
+Pscav_scaler_y: ./utils/ML_model/features_scaler/Pscav_Y.joblib
+Pscav_ml_model: ./utils/ML_model/model/Pscav.keras
+
+calc_features:
+  Exh. valve opening angle Cyl AVG: 'Exh. valve opening angle Cyl #0'
+  GAV Timing Set Point Cyl AVG: 'GAV Timing Set Point Cyl #0'
+  Exhaust Valve Closing Angle Setpoint Cyl AVG: 'Exhaust Valve Closing Angle Setpoint Cyl #0'
+  PFI Timing Set Point Cyl AVG: 'PFI Timing Set Point Cyl #0'
+  PFI Duration Set Point Cyl AVG: 'PFI Duration Set Point Cyl #0'
+  Cyl. lub. distribution share below_PERC:
+    ['Cyl. lub. distribution share below piston','Cyl. lub. distribution share into piston']
+  Cyl. lub. distribution share above_PERC: 'Cyl. lub. distribution share above piston'
+  Fuel Rail Pressure_diff: 
+    ['Mean Fuel Rail Pressure (display)','Main Fuel Rail Pressure']
+  Firing Pr. Balancing Injection Offset Cyl_AVG: 'Firing Pr. Balancing Injection Offset Cyl #0'
+  Fuel Pressure Actuator Setpoint_AVG: 
+    ['Fuel Pressure Actuator Setpoint 1','Fuel Pressure Actuator Setpoint 2','Fuel Pressure Actuator Setpoint 3']
+  Fuel Pump Setpoint_AVG:
+    ['Fuel Pump Setpoint Master Controller','Fuel Pump Setpoint Slave Controller']
+  Lubrication Oil Feed Rate Cyl AVG: 'Lubrication Oil Feed Rate Cyl #0'
+  Lubrication Deadtime Feedback Cyl AVG: 'Lubrication Deadtime Feedback Cyl #0'
+  Start of Injection Cyl_AVG: 'Start of Injection Cyl #0'
+  Pilot Fuel Pressure diff: 
+    ['Pilot Fuel Pressure A','Pilot Fuel Pressure B']
+  Scavenge Air Temp. Piston Underside Cyl_AVG: 'Scavenge Air Temp. Piston Underside Cyl #0'
+  Firing Pr. Balancing Injection Offset Cyl AVG: 'Firing Pr. Balancing Injection Offset Cyl_AVG'
+calc_efd_features:
+  PR: ['Firing Pressure Cyl #0','Compression Pressure Cyl #0']
+  Ntc_Pscav: ['Turbocharger 1 speed','Scav. Air Press. Mean Value']
+  Pcomp_Pscav: ['Compression Pressure Cyl #0','Scav. Air Press. Mean Value']
+look_back: 336
+forecast_horizon: 336
+TS_frame_colnames: ['TS_Pcomp', 'TS_Pscav','TS_Texh', 'TS_Ntc','TS_Pmax', 'TS_PR','TS_Ntc_Pscav','TS_Pcomp_Pscav','Estimated engine load']
+engine_load: 'Estimated engine load'
+AE_path: './utils/AE/model/model_02082023.pt'
+imp_feats_path: './utils/TS_model/final_feats.csv'
+TS_model_path: './utils/TS_model/TS_model.h5'
+TS_scale_x: './utils/TS_model/TS_X.joblib'
+TS_scale_y: './utils/TS_model/TS_Y.joblib'
+bool: False
+engine_number: '2'
+ts_res_loc: './utils/TS_model/results/'
+ml_res_loc: './utils/ML_model/results/'
+index: 'signaldate'
+index2: 'Date Time'
+forecast_data_path: './test_data/test_data_14.csv'
+preprocess_data_path: './test_data/test_data_14.csv'
+p_value: .2
+f_mat_path: './utils/Fault_Matrix/Fault_matrix.xlsx'
+map_path: './utils/Fault_Matrix/results/'
+end_res_colorder: ['Date Time','Estimated engine load','matched_load','matched_date','deltas','TS_Pcomp','TS_Pscav','TS_Texh','TS_Ntc','TS_Pmax','TS_PR','TS_Ntc_Pscav',
+                        'TS_Pcomp_Pscav','Ref_Pcomp','Ref_Pscav','Ref_Texh','Ref_Ntc','Ref_Pmax','Ref_PR','Ref_Ntc_Pscav','Ref_Pcomp_Pscav',
+                        'InjSysFault','StaInjLate','StaInjEarly','ExhValvLeak','BloCombChabr','ExhValEarOpn','ExhValLatOpn','ExhValEarlClos','ExhValLatClos']

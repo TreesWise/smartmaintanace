@@ -54,36 +54,31 @@ max_load: 84.19076333333332
 cyl_count: 6
 efd_features: ['Pcomp_Pscav','PR','Pmax','Ntc','Ntc_Pscav','Pcomp','Pscav','Texh'] 
 #scaling and ml models
-Pcomp_Pscav_scaler_x: ./utils/ML_model/features_scaler/Pcomp_Pscav_X.joblib    
-Pcomp_Pscav_scaler_y: ./utils/ML_model/features_scaler/Pcomp_Pscav_Y.joblib
+# ml_scaler_x: ./utils/ML_model/features_scaler/ml_scaler_X.joblib    
+# ml_scaler_y: ./utils/ML_model/features_scaler/ml_scaler_Y.joblib
+Pcomp_Pscav_scaler_x: ./utils/ML_model/features_scaler/Pcomp_Pscav_X.joblib   
+Pcomp_Pscav_scaler_y: ./utils/ML_model/features_scaler/Pcomp_Pscav_Y.joblib   
 Pcomp_Pscav_ml_model: ./utils/ML_model/model/Pcomp_Pscav.keras
-
 PR_scaler_x: ./utils/ML_model/features_scaler/PR_X.joblib
 PR_scaler_y: ./utils/ML_model/features_scaler/PR_Y.joblib
 PR_ml_model: ./utils/ML_model/model/PR.keras
-
 Ntc_Pscav_scaler_x: ./utils/ML_model/features_scaler/Ntc_Pscav_X.joblib
 Ntc_Pscav_scaler_y: ./utils/ML_model/features_scaler/Ntc_Pscav_Y.joblib
 Ntc_Pscav_ml_model: ./utils/ML_model/model/Ntc_Pscav.keras
-
 Pmax_scaler_x: ./utils/ML_model/features_scaler/Pmax_X.joblib
 Pmax_scaler_y: ./utils/ML_model/features_scaler/Pmax_Y.joblib
 Pmax_ml_model: ./utils/ML_model/model/Pmax.keras
-
 Texh_scaler_x: ./utils/ML_model/features_scaler/Texh_X.joblib
 Texh_scaler_y: ./utils/ML_model/features_scaler/Texh_Y.joblib
 Texh_ml_model: ./utils/ML_model/model/Texh.keras
-
 Ntc_scaler_x: ./utils/ML_model/features_scaler/Ntc_X.joblib
 Ntc_scaler_y: ./utils/ML_model/features_scaler/Ntc_Y.joblib
 Ntc_ml_model: ./utils/ML_model/model/Ntc.keras
-
 Pcomp_scaler_x: ./utils/ML_model/features_scaler/Pcomp_X.joblib
 Pcomp_scaler_y: ./utils/ML_model/features_scaler/Pcomp_Y.joblib
 Pcomp_ml_model: ./utils/ML_model/model/Pcomp.keras
-
 Pscav_scaler_x: ./utils/ML_model/features_scaler/Pscav_X.joblib
-Pscav_scaler_y: ./utils/ML_model/features_scaler/Pscav_Y.joblib
+Pscav_scaler_y: ./utils/ML_model/features_scaler/Pscav_Y.joblib 
 Pscav_ml_model: ./utils/ML_model/model/Pscav.keras
 
 calc_features:
@@ -111,28 +106,108 @@ calc_features:
   Firing Pr. Balancing Injection Offset Cyl AVG: 'Firing Pr. Balancing Injection Offset Cyl_AVG'
 calc_efd_features:
   PR: ['Firing Pressure Cyl #0','Compression Pressure Cyl #0']
-  Ntc_Pscav: ['Turbocharger 1 speed','Scav. Air Press. Mean Value']
-  Pcomp_Pscav: ['Compression Pressure Cyl #0','Scav. Air Press. Mean Value']
+  Ntc_Pscav: ['Turbocharger 1 speed(ems)','Scav. Air Press. Mean Value(ems)']
+  Pcomp_Pscav: ['Compression Pressure Cyl #0','Scav. Air Press. Mean Value(ems)']
 look_back: 336
 forecast_horizon: 336
-TS_frame_colnames: ['TS_Pcomp', 'TS_Pscav','TS_Texh', 'TS_Ntc','TS_Pmax', 'TS_PR','TS_Ntc_Pscav','TS_Pcomp_Pscav','Estimated engine load']
-engine_load: 'Estimated engine load'
+TS_frame_colnames: ['TS_Pcomp', 'TS_Pscav','TS_Texh', 'TS_Ntc','TS_Pmax', 'TS_PR','TS_Ntc_Pscav','TS_Pcomp_Pscav','Estimated engine load(ems)']
+engine_load: 'Estimated engine load(ems)'
 AE_path: './utils/AE/model/model_02082023.pt'
-imp_feats_path: './utils/TS_model/final_feats.csv'
-TS_model_path: './utils/TS_model/TS_model.h5'
-TS_scale_x: './utils/TS_model/TS_X.joblib'
-TS_scale_y: './utils/TS_model/TS_Y.joblib'
+imp_feats_ts: ['Fuel oil temperature supply unit(ams)',
+       'TC Bearing Oil Pressure Inlet TC #01(ams)',
+       'Estimated engine load(ems)', 'Turbocharger 1 speed(ems)',
+       'VIT intermediate result A(ems)', 'VIT intermediate result B(ems)',
+       'VIT intermediate result C(ems)', 'VIT intermediate result D(ems)',
+       'Common Start of Injection(ems)', 'Scav. Air Press. Mean Value(ems)',
+       'Compression Pressure Average(ems)', 'Firing Pressure Average(ems)',
+       'Relative Engine Speed(ems)', 'Exhaust Gas Average Temperature(ems)',
+       'Exh. valve opening angle at CMCR(ems)',
+       'Exh. valve closing angle at CMCR(ems)',
+       'Cyl. lub. distribution share above piston(ems)',
+       'Cyl. lub. distribution share below piston(ems)',
+       'Cyl. lub. distribution share into piston(ems)',
+       'Engine External Speed Setpoint(ems)',
+       'Engine Internal Speed Setpoint(ems)', 'MFI Demand(ems)',
+       'Limited MFI PID MAX value(ems)', 'Fuel Pressure Setpoint(ems)',
+       'Fuel Pump Setpoint Master Controller(ems)',
+       'Fuel Pump Setpoint Slave Controller(ems)',
+       'Barometric Pressure 1(ems)', 'Exh. valve opening angle Cyl_mean',
+       'Exh. valve opening angle Cyl_min', 'Exh. valve opening angle Cyl_max',
+       'Firing Pr. Balancing Injection Offset Cyl_mean',
+       'Firing Pr. Balancing Injection Offset Cyl_min',
+       'Firing Pr. Balancing Injection Offset Cyl_max',
+       'Start of Injection Cyl_mean', 'Start of Injection Cyl_min',
+       'Start of Injection Cyl_max', 'Engine speed(scr)', 'PR', 'Ntc_Pscav',
+       'Pcomp_Pscav']
+TS_model_path: './utils/TS_model/TS_encdec_att_v3.h5'
+TS_scale_x: './utils/TS_model/TS_X_scaler.joblib'
+TS_scale_y: './utils/TS_model/TS_Y_scaler.joblib'
 bool: False
 engine_number: '2'
 ts_res_loc: './utils/TS_model/results/'
 ml_res_loc: './utils/ML_model/results/'
 index: 'signaldate'
 index2: 'Date Time'
-forecast_data_path: './test_data/test_data_14.csv'
-preprocess_data_path: './test_data/test_data_14.csv'
+# forecast_data_path: './test_data/API_data_nov_3-dec_4_23.csv'
+forecast_data_path: './utils/Data/'
+test_data: '/Test/API_data_Test.csv' 
+# preprocess_data_path: './test_data/Combined_data_eng2_diesel_1hr_bfill_v2.csv'
+preprocess_data_path: './test_data/Combined_data_eng2_diesel_1hr_bfill_v2.csv'
 p_value: .2
 f_mat_path: './utils/Fault_Matrix/Fault_matrix.xlsx'
-map_path: './utils/Fault_Matrix/results/'
-end_res_colorder: ['Date Time','Estimated engine load','matched_load','matched_date','deltas','TS_Pcomp','TS_Pscav','TS_Texh','TS_Ntc','TS_Pmax','TS_PR','TS_Ntc_Pscav',
+# map_path: './utils/Fault_Matrix/results/'
+end_res_colorder: ['Date Time','Estimated engine load(ems)','matched_load','matched_date','deltas','TS_Pcomp','TS_Pscav','TS_Texh','TS_Ntc','TS_Pmax','TS_PR','TS_Ntc_Pscav',
                         'TS_Pcomp_Pscav','Ref_Pcomp','Ref_Pscav','Ref_Texh','Ref_Ntc','Ref_Pmax','Ref_PR','Ref_Ntc_Pscav','Ref_Pcomp_Pscav',
                         'InjSysFault','StaInjLate','StaInjEarly','ExhValvLeak','BloCombChabr','ExhValEarOpn','ExhValLatOpn','ExhValEarlClos','ExhValLatClos']
+
+add_cols_exv: 
+  base: 'Exh. valve opening angle Cyl #0'
+  feat: ['Exh. valve opening angle Cyl_mean','Exh. valve opening angle Cyl_min','Exh. valve opening angle Cyl_max']
+add_cols_frp:
+  base: 'Firing Pr. Balancing Injection Offset Cyl #0'
+  feat: ['Firing Pr. Balancing Injection Offset Cyl_mean','Firing Pr. Balancing Injection Offset Cyl_min','Firing Pr. Balancing Injection Offset Cyl_max']
+add_cols_strtinj: 
+  base: 'Start of Injection Cyl #0'
+  feat: ['Start of Injection Cyl_mean','Start of Injection Cyl_min','Start of Injection Cyl_max']
+
+VESSEL_OBJECT_ID: 123456789 
+JOB_PLAN_ID: 10012
+EQUIPMENT_CODE : 'abc' 
+EQUIPMENT_ID : 789
+Vessel_name: 'Mu Lan'
+
+faults_recom:
+  Injection system fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
+  Start of injection too late : ['Check VIT system']
+  Start of injection too early : ['Check VIT system']
+  Exhaust valve leaking : ['Check exhaust valve/seat condition']
+  Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
+  Exhaust valve early opening : ['Check exhaust valve timing mechanism','Check camshaft condition']
+  Exhaust valve late opening : ['Check exhaust valve timing mechanism','Check camshaft condition']
+  Exhaust valve early closure : ['Check exhaust valve timing mechanism','Check camshaft condition']
+  Exhaust valve late closure : ['Check exhaust valve timing mechanism','Check camshaft condition']
+  
+Fault_ids:
+  InjSysFault: ['1','Injection system fault']
+  StaInjLate: ['2','Start of injection too late']
+  StaInjEarly: ['3','Start of injection too early']
+  ExhValvLeak: ['4','Exhaust valve leaking']
+  BloCombChabr: ['5','Blow-by in combustion chamber']
+  ExhValEarOpn: ['6','Exhaust valve early opening']
+  ExhValLatOpn: ['7','Exhaust valve late opening']
+  ExhValEarlClos: ['8','Exhaust valve early closure']
+  ExhValLatClos: ['9','Exhaust valve late closure']
+
+
+rating_level:
+  0-60 : ['Satisfactory','3']
+  60-70 : ['Fair','2']
+  70-80 : ['Marginal','1']
+  80-100 : ['Unacceptable','0']
+
+Data_api:
+  login: 'bsm'
+  pass: 'gdxUNq7Asstdk'
+  
+
+  

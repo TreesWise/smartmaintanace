@@ -272,6 +272,170 @@
 #     #         print(e)
 #     #         raise HTTPException(status_code=404, detail='No data found for the given input')
 
+# from fastapi import FastAPI, Depends, HTTPException, status
+# from fastapi.middleware.cors import CORSMiddleware
+# from fastapi.security import OAuth2PasswordRequestForm
+# from datetime import timedelta
+
+# from config import ACCESS_TOKEN_EXPIRE_MINUTES
+# from database_conn import database
+# from helper import authenticate_user, create_access_token, get_current_active_user
+# from custom_data_type import Token, User
+
+# import pandas as pd
+# from io import StringIO
+# import json
+# import numpy as np
+# import time
+
+# import torch
+# from AE_ import data_load_preprocess, Transform_data, AE, recreation_loss
+
+
+
+# import warnings
+# warnings.filterwarnings('ignore')
+
+
+# #time series model
+# from TS_model import pdm_ts_model
+# #ml model
+# from ML_model import pdm_ml_model
+# #fault mapping
+# from Fault_Mapping import Faults_Mapping
+# import yaml
+
+# with open('cbm_yaml.yml','r') as file:
+#     utility_dict = yaml.safe_load(file)
+
+
+# app = FastAPI()
+
+
+# # #model weight loading
+# model = AE()
+# model.load_state_dict(torch.load(utility_dict['AE_path'], map_location=torch.device('cpu')))
+# model.eval()
+
+# #TS model loading
+# ts_features_file = pd.read_csv(utility_dict['imp_feats_path'])
+# ts_model =  utility_dict['TS_model_path']#load ts model here
+# x_scale = utility_dict['TS_scale_x']#load X_scaler model here
+# y_scale = utility_dict['TS_scale_y']#load Y_scaler model here
+# engine_normalized = utility_dict['bool']
+# engine_number = utility_dict['engine_number']
+# ts_res_loc = utility_dict['ts_res_loc']
+# TS = pdm_ts_model(ts_features_file, ts_model,x_scale,y_scale,engine_normalized,engine_number,ts_res_loc)
+
+
+# #ML model loading
+# Efd_features = utility_dict['efd_features']
+# ml_res_loc = utility_dict['ml_res_loc']
+# ML = pdm_ml_model(Efd_features,engine_normalized,ts_res_loc,engine_number,ml_res_loc)
+
+
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# @app.on_event("startup")
+# async def database_connect():
+#     await database.connect()
+# @app.on_event("shutdown")
+# async def database_disconnect():
+#     await database.disconnect()
+
+
+# #test endpoint
+# @app.get("/test")
+# async def test(User = Depends(get_current_active_user)):
+#     return {"data": User.dict()}
+
+# # Authentication
+# @app.post("/token")
+# async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+#     user = await authenticate_user(form_data.username, form_data.password)
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect username or password",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+#     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+#     access_token = create_access_token(
+#         data={"sub": user.username}, expires_delta=access_token_expires
+#     )
+#     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# async def preprocess_dataset(data):
+#     pass
+
+
+# def data_preprocess(raw_data_path):
+#     df = pd.read_csv(raw_data_path, index_col=utility_dict['index'])
+#     df = df[(df[utility_dict['engine_load']] >= 30) & (df[utility_dict['engine_load']] <= 100)]
+#     #last 336 datapoints
+#     df = df.iloc[-utility_dict['look_back']:,:]
+#     return df
+
+# @app.post("/forecast-14days")
+# async def forecast_14days(current_user: User = Depends(get_current_active_user)):
+#     start_time = time.time()
+#     data = pd.read_csv(utility_dict['forecast_data_path'], index_col=utility_dict['index'])
+    
+
+#     #-------------------> TS_model calling
+#     TS_result = TS.Timeseries(data)
+
+
+#     #-------------------> AUTOENCODE
+#     #data preprocessing
+#     df = data_load_preprocess(utility_dict['preprocess_data_path'])
+#     df_norm_obj_test = Transform_data(df)
+#     df_norm_test = df_norm_obj_test.normalize()
+#     #final data for model
+#     df_tensor_test = torch.tensor(df_norm_test.values, dtype=torch.float32)
+#     recreated_df_test = model(df_tensor_test).cpu().detach().numpy()
+#     base_data_test = df_tensor_test.cpu().detach().numpy()
+#     faulty_date = recreation_loss(base_data_test, recreated_df_test)
+#     if len(faulty_date) > 0:
+#         #data_from_AE = data.iloc[faulty_date,:]
+#         data_from_AE = data.drop(index=faulty_date)
+#     else:
+#         data_from_AE = data
+#     print('data_from_AE-----------',data_from_AE.shape)
+    
+
+#     #-------------------> ML_model calling
+#     ML_result = ML.ML_models(data_from_AE)
+
+
+#     #-------------------> Fault mapping
+#     final_indx = [pd.Timestamp(TS_result)+pd.Timedelta(tim,'h') for tim in range(1,TS.forecast_horizon+1)] #for getting timestamps for forecast period, here delta is hourly based
+#     fault_mat_loc = utility_dict['f_mat_path']
+#     p=utility_dict['p_value'] #weight value for kpi calculations
+#     mapping_loc = utility_dict['map_path']
+#     output_dict = {}
+#     for i in range(1,ML.cyl_count+1):#------------ML.cyl_count+1
+#         ml_ress = pd.read_csv(ml_res_loc+'ENG_2_TS_ML_res_Cyl_{}.csv'.format(str(i)),index_col=False)
+#         ff = Faults_Mapping(ml_ress,fault_mat_loc,Efd_features,p)
+#         ff1,fault_ids = ff.Mapping()
+#         ml_ress = pd.concat([ml_ress,ff1[fault_ids]],axis=1)
+#         ml_ress[utility_dict['index2']] = final_indx
+#         #for ordering columns
+#         ml_ress = ml_ress[utility_dict['end_res_colorder']]
+#         ml_ress.to_excel(mapping_loc+'mapping_res_cyl{}.xlsx'.format(i),index=False)
+#         output_dict['Cyl_'+str(i)] = ml_ress.to_dict(orient='list')
+#     end_time = time.time()
+    # print('total time taken for 14 days forecast',end_time-start_time)
+    # return output_dict
+
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -286,17 +450,21 @@ import pandas as pd
 from io import StringIO
 import json
 import numpy as np
+import pickle
+from datetime import datetime
 import time
+import os
 
 import torch
-from AE_ import data_load_preprocess, Transform_data, AE, recreation_loss
+# from AE_ import data_load_preprocess, Transform_data, AE, recreation_loss
 
 
 
 import warnings
 warnings.filterwarnings('ignore')
 
-
+#data collection
+from data_collection_api import api_data_collection
 #time series model
 from TS_model import pdm_ts_model
 #ml model
@@ -305,33 +473,39 @@ from ML_model import pdm_ml_model
 from Fault_Mapping import Faults_Mapping
 import yaml
 
-with open('cbm_yaml.yml','r') as file:
-    utility_dict = yaml.safe_load(file)
-
-
 app = FastAPI()
+
+with open('cbm_yaml.yml','r') as file:
+    utility_dict = yaml.safe_load(file)   
+
+
+#data collection part
+with open('data_collect_dict.pickle','rb') as file2:
+    dict1 = pickle.load(file2)
 
 
 # #model weight loading
-model = AE()
-model.load_state_dict(torch.load(utility_dict['AE_path'], map_location=torch.device('cpu')))
-model.eval()
+# model = AE()
+# model.load_state_dict(torch.load(utility_dict['AE_path'], map_location=torch.device('cpu')))
+# model.eval()
 
 #TS model loading
-ts_features_file = pd.read_csv(utility_dict['imp_feats_path'])
 ts_model =  utility_dict['TS_model_path']#load ts model here
 x_scale = utility_dict['TS_scale_x']#load X_scaler model here
 y_scale = utility_dict['TS_scale_y']#load Y_scaler model here
-engine_normalized = utility_dict['bool']
 engine_number = utility_dict['engine_number']
-ts_res_loc = utility_dict['ts_res_loc']
-TS = pdm_ts_model(ts_features_file, ts_model,x_scale,y_scale,engine_normalized,engine_number,ts_res_loc)
+# ts_res_loc = utility_dict['ts_res_loc']
+ts_res_loc = utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Results/TS/'
+TS = pdm_ts_model(ts_model,x_scale,y_scale,engine_number,ts_res_loc)
 
 
 #ML model loading
 Efd_features = utility_dict['efd_features']
-ml_res_loc = utility_dict['ml_res_loc']
-ML = pdm_ml_model(Efd_features,engine_normalized,ts_res_loc,engine_number,ml_res_loc)
+# ml_res_loc = utility_dict['ml_res_loc']
+ml_res_loc = utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Results/ML/'
+ML = pdm_ml_model(Efd_features,ts_res_loc,engine_number,ml_res_loc)
+
+
 
 
 app.add_middleware(
@@ -382,55 +556,207 @@ def data_preprocess(raw_data_path):
     #last 336 datapoints
     df = df.iloc[-utility_dict['look_back']:,:]
     return df
+def data_collect(utility_dict,dict1):
+    call = api_data_collection(1) #if no. o days are more than one uncomment sleep in data_collection_api.py
+    for tr in range(1,int(utility_dict['engine_number'])+1):
+        table = 'ems_'+str(tr)+'_signals'
+        data_call = call.data_collect(utility_dict['Data_api']['login'],utility_dict['Data_api']['pass'],dict1['req_col'],dict1['col_map'],table)
+        cur_data = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],index_col=utility_dict['index'])
+        df_comb = pd.concat([cur_data,data_call])
+        df_comb.reset_index(inplace=True)
+        df_comb.drop_duplicates(subset=[utility_dict['index']],inplace=True)
+        df_comb.set_index(df_comb[utility_dict['index']],inplace=True,drop=True)
+        df_comb.drop(columns=[utility_dict['index']],inplace=True)
+        df_comb.to_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'])
+    print('Data collection completed')
 
 @app.post("/forecast-14days")
 async def forecast_14days(current_user: User = Depends(get_current_active_user)):
+    data_collect(utility_dict,dict1)
     start_time = time.time()
-    data = pd.read_csv(utility_dict['forecast_data_path'], index_col=utility_dict['index'])
+    new_data_path = utility_dict['forecast_data_path']
+    vessel_name = utility_dict['Vessel_name']
+    for eng in range(1,int(utility_dict['engine_number'])+1):
+        data = data_preprocess(new_data_path+vessel_name+'/Engine_'+str(eng)+'/Test/API_data_Test.csv')
+        
+
+        #-------------------> TS_model calling
+        TS_result = TS.Timeseries(data,eng)
+
+
+        #-------------------> AUTOENCODE
+        #data preprocessing - This will be filtered past data + new data
+        df = pd.read_csv(utility_dict['preprocess_data_path'],index_col=utility_dict['index'])
+        # df = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(eng)+utility_dict['test_data'],index_col=utility_dict['index']) #chnage test to train folder
+        # df_norm_obj_test = Transform_data(df)
+        # df_norm_test = df_norm_obj_test.normalize()
+        # #final data for model
+        # df_tensor_test = torch.tensor(df_norm_test.values, dtype=torch.float32)
+        # recreated_df_test = model(df_tensor_test).cpu().detach().numpy()
+        # base_data_test = df_tensor_test.cpu().detach().numpy()
+        # faulty_date = recreation_loss(base_data_test, recreated_df_test)
+        # if len(faulty_date) > 0:
+        #     #data_from_AE = data.iloc[faulty_date,:]
+        #     data_from_AE = data.drop(index=faulty_date)
+        # else:
+        #     data_from_AE = data
+        # print('data_from_AE-----------',data_from_AE.shape)
+        
+
+        # #-------------------> ML_model calling
+        # ML_result = ML.ML_models(data_from_AE)
+        ML_result = ML.ML_models(df,eng)
+
+
+        #-------------------> Fault mapping
+        final_indx = [pd.Timestamp(TS_result)+pd.Timedelta(tim,'h') for tim in range(1,TS.forecast_horizon+1)] #for getting timestamps for forecast period, here delta is hourly based
+        fault_mat_loc = utility_dict['f_mat_path']
+        p=utility_dict['p_value'] #weight value for kpi calculations
+        # mapping_loc = utility_dict['map_path']
+        mapping_loc = utility_dict['forecast_data_path']+'/'+utility_dict['Vessel_name']+'/Results/Mapping_res/'
+        output_dict = {}
+        for i in range(1,ML.cyl_count+1):#------------ML.cyl_count+1
+            ml_ress = pd.read_csv(ml_res_loc+utility_dict['Vessel_name']+'_ENG_{}_TS_ML_res_Cyl_{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]),index_col=False)
+            ff = Faults_Mapping(ml_ress,fault_mat_loc,Efd_features,p)
+            ff1,fault_ids = ff.Mapping()
+            ml_ress = pd.concat([ml_ress,ff1[fault_ids]],axis=1)
+            ml_ress[utility_dict['index2']] = final_indx
+            #for ordering columns
+            ml_ress = ml_ress[utility_dict['end_res_colorder']]
+            ml_ress.to_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]),index=False)
+            output_dict['Cyl_'+str(i)] = ml_ress.to_dict(orient='list')
+        end_time = time.time()
+        print('total time taken for 14 days forecast',end_time-start_time)
     
+    def output_format(rl,typo,des,utility_dict):
+    # rl - 
+        if utility_dict!=None:
+            er=','.join(utility_dict['faults_recom'][des])
+            return '({})({})-{}-{}'.format(str(rl),typo,des,er)
+        else:
+            er='Perfect'
+            return '({})({})-{}-{}'.format(str(rl),typo,des,er)
 
-    #-------------------> TS_model calling
-    TS_result = TS.Timeseries(data)
+    def rating_level(row):
+        rating = {}
+        if (row['InjSysFault']>=0)&(row['InjSysFault']<60):
+            rating['InjSysFault'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['InjSysFault']>=60)&(row['InjSysFault']<70):
+            rating['InjSysFault'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['InjSysFault']>=70)&(row['InjSysFault']<80):
+            rating['InjSysFault'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['InjSysFault']>=80:
+            rating['InjSysFault'] = str(utility_dict['rating_level']['80-100'][1])  
 
+        if (row['StaInjLate']>=0)&(row['StaInjLate']<60):
+            rating['StaInjLate'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['StaInjLate']>=60)&(row['StaInjLate']<70):
+            rating['StaInjLate'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['StaInjLate']>=70)&(row['StaInjLate']<80):
+            rating['StaInjLate'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['StaInjLate']>=80:
+            rating['StaInjLate'] = str(utility_dict['rating_level']['80-100'][1])   
 
-    #-------------------> AUTOENCODE
-    #data preprocessing
-    df = data_load_preprocess(utility_dict['preprocess_data_path'])
-    df_norm_obj_test = Transform_data(df)
-    df_norm_test = df_norm_obj_test.normalize()
-    #final data for model
-    df_tensor_test = torch.tensor(df_norm_test.values, dtype=torch.float32)
-    recreated_df_test = model(df_tensor_test).cpu().detach().numpy()
-    base_data_test = df_tensor_test.cpu().detach().numpy()
-    faulty_date = recreation_loss(base_data_test, recreated_df_test)
-    if len(faulty_date) > 0:
-        #data_from_AE = data.iloc[faulty_date,:]
-        data_from_AE = data.drop(index=faulty_date)
-    else:
-        data_from_AE = data
-    print('data_from_AE-----------',data_from_AE.shape)
-    
+        if (row['StaInjEarly']>=0)&(row['StaInjEarly']<60):
+            rating['StaInjEarly'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['StaInjEarly']>=60)&(row['StaInjEarly']<70):
+            rating['StaInjEarly'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['StaInjEarly']>=70)&(row['StaInjEarly']<80):
+            rating['StaInjEarly'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['StaInjEarly']>=80:
+            rating['StaInjEarly'] = str(utility_dict['rating_level']['80-100'][1])    
 
-    #-------------------> ML_model calling
-    ML_result = ML.ML_models(data_from_AE)
+        if (row['ExhValvLeak']>=0)&(row['ExhValvLeak']<60):
+            rating['ExhValvLeak'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['ExhValvLeak']>=60)&(row['ExhValvLeak']<70):
+            rating['ExhValvLeak'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['ExhValvLeak']>=70)&(row['ExhValvLeak']<80):
+            rating['ExhValvLeak'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['ExhValvLeak']>=80:
+            rating['ExhValvLeak'] = str(utility_dict['rating_level']['80-100'][1])        
 
+        if (row['BloCombChabr']>=0)&(row['BloCombChabr']<60):
+            rating['BloCombChabr'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['BloCombChabr']>=60)&(row['BloCombChabr']<70):
+            rating['BloCombChabr'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['BloCombChabr']>=70)&(row['BloCombChabr']<80):
+            rating['BloCombChabr'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['BloCombChabr']>=80:
+            rating['BloCombChabr'] = str(utility_dict['rating_level']['80-100'][1])    
 
-    #-------------------> Fault mapping
-    final_indx = [pd.Timestamp(TS_result)+pd.Timedelta(tim,'h') for tim in range(1,TS.forecast_horizon+1)] #for getting timestamps for forecast period, here delta is hourly based
-    fault_mat_loc = utility_dict['f_mat_path']
-    p=utility_dict['p_value'] #weight value for kpi calculations
-    mapping_loc = utility_dict['map_path']
-    output_dict = {}
-    for i in range(1,ML.cyl_count+1):#------------ML.cyl_count+1
-        ml_ress = pd.read_csv(ml_res_loc+'ENG_2_TS_ML_res_Cyl_{}.csv'.format(str(i)),index_col=False)
-        ff = Faults_Mapping(ml_ress,fault_mat_loc,Efd_features,p)
-        ff1,fault_ids = ff.Mapping()
-        ml_ress = pd.concat([ml_ress,ff1[fault_ids]],axis=1)
-        ml_ress[utility_dict['index2']] = final_indx
-        #for ordering columns
-        ml_ress = ml_ress[utility_dict['end_res_colorder']]
-        ml_ress.to_excel(mapping_loc+'mapping_res_cyl{}.xlsx'.format(i),index=False)
-        output_dict['Cyl_'+str(i)] = ml_ress.to_dict(orient='list')
-    end_time = time.time()
-    print('total time taken for 14 days forecast',end_time-start_time)
-    return output_dict
+        if (row['ExhValEarOpn']>=0)&(row['ExhValEarOpn']<60):
+            rating['ExhValEarOpn'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['ExhValEarOpn']>=60)&(row['ExhValEarOpn']<70):
+            rating['ExhValEarOpn'] = str(utility_dict['rating_level']['60-70'][1])
+        elif (row['ExhValEarOpn']>=70)&(row['ExhValEarOpn']<80):
+            rating['ExhValEarOpn'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['ExhValEarOpn']>=80:
+            rating['ExhValEarOpn'] = str(utility_dict['rating_level']['80-100'][1])      
+
+        if (row['ExhValLatOpn']>=0)&(row['ExhValLatOpn']<60):
+            rating['ExhValLatOpn'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['ExhValLatOpn']>=60)&(row['ExhValLatOpn']<70):
+            rating['ExhValLatOpn'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['ExhValLatOpn']>=70)&(row['ExhValLatOpn']<80):
+            rating['ExhValLatOpn'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['ExhValLatOpn']>=80:
+            rating['ExhValLatOpn'] = str(utility_dict['rating_level']['80-100'][1])    
+
+        if (row['ExhValEarlClos']>=0)&(row['ExhValEarlClos']<60):
+            rating['ExhValEarlClos'] = str(utility_dict['rating_level']['0-60'][1])
+        elif (row['ExhValEarlClos']>=60)&(row['ExhValEarlClos']<70):
+            rating['ExhValEarlClos'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['ExhValEarlClos']>=70)&(row['ExhValEarlClos']<80):
+            rating['ExhValEarlClos'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['ExhValEarlClos']>=80:
+            rating['ExhValEarlClos'] = str(utility_dict['rating_level']['80-100'][1])      
+
+        if (row['ExhValLatClos']>=0)&(row['ExhValLatClos']<60):
+            rating['ExhValLatClos'] = str(utility_dict['rating_level']['0-60'][1]) 
+        elif (row['ExhValLatClos']>=60)&(row['ExhValLatClos']<70):
+            rating['ExhValLatClos'] = str(utility_dict['rating_level']['60-70'][1]) 
+        elif (row['ExhValLatClos']>=70)&(row['ExhValLatClos']<80):
+            rating['ExhValLatClos'] = str(utility_dict['rating_level']['70-80'][1])     
+        elif row['ExhValLatClos']>=80:
+            rating['ExhValLatClos'] = str(utility_dict['rating_level']['80-100'][1])         
+        return rating     
+
+# cv = rating_level(list(df.iterrows())[0][1])         
+
+    output_format_mapping = {'Vessel_info':{'Vessel_Name':utility_dict['Vessel_name'],'VESSEL_OBJECT_ID':utility_dict['VESSEL_OBJECT_ID'],
+                                     'JOB_PLAN_ID':utility_dict['JOB_PLAN_ID']}}
+    output_format_mapping['Engine_data'] = {}
+    for engg in range(1,int(utility_dict['engine_number'])+1):
+        output_format_mapping['Engine_data']['Engine_'+str(engg)] = {}
+        for i in range(1,ML.cyl_count+1):
+            output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)] = {}
+            cyl_ff = pd.read_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(engg),str(i),str(datetime.now()).split(' ')[0]), index_col='Date Time')
+            for r,c in cyl_ff.iterrows():
+                indx = rating_level(c)
+                mapped = '||'.join([output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],utility_dict) if v not in ['3','2','1'] else output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],None) for k,v in indx.items()])
+                output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)].update({str(r):mapped})
+
+    # for i in range(1,ML.cyl_count+1):
+    #     cyl_ff = pd.read_excel(mapping_loc + 'mapping_res_cyl{}.xlsx'.format(str(i)), index_col='Date Time')
+    #     output_format_dict['Me_data']['Cyl_'+str(i)] = cyl_ff.to_dict(orient='index')
+    # inputs :- 
+    # 1)no of cyls
+    # 2)no of engines
+    # 3)VESSEL_OBJECT_ID
+    # 4)JOB_PLAN_ID
+    with open(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(int(time.time()))+'.pickle','wb') as file1:
+        pickle.dump(output_format_mapping,file1)
+    return output_format_mapping
+
+@app.post("/smart_maintenance")
+async def smart_maintenance(current_user: User = Depends(get_current_active_user)):
+    path_endpoint = './utils/Data/'+utility_dict['Vessel_name']+'/Results/combined_res'
+    path_endpoint_list = os.listdir(path_endpoint)
+    epochss = []
+    for fl in path_endpoint_list:
+        epochss.append(int(fl.split('_')[1].split('.')[0]))
+    max(epochss)    
+    with open(path_endpoint+'/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle','rb') as file3:
+        end_point_result = pickle.load(file3)   
+    # Return the prediction as JSON
+    return end_point_result

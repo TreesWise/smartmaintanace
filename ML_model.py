@@ -215,6 +215,8 @@ import os
 import time
 import yaml
 from datetime import datetime
+from azure.storage.blob import ContainerClient
+from io import StringIO
 
 with open('cbm_yaml.yml','r') as file:
     utility_dict = yaml.safe_load(file)
@@ -413,7 +415,10 @@ with open('cbm_yaml.yml','r') as file:
 #         tm28 = time.time() 
 #         print('Total time for ml model part :',tm28-tm26) 
 
-
+def read_data_from_blob(dataset_name,idx_col,container_client):
+    # try:
+    data = pd.read_csv(StringIO(container_client.download_blob(dataset_name).content_as_text()),index_col=idx_col)
+    return data
 class pdm_ml_model():
     global utility_dict
     load_limit = utility_dict['load_limit'] #in %
@@ -460,6 +465,8 @@ class pdm_ml_model():
         #4)store ml models in a separate folder named 'ML_models'
         #5)store scaling models in a separate folder named 'Scaling_models' with '_X' extention for inputs and '_Y'extention for output
         #define df here
+        container_client = ContainerClient.from_connection_string(
+        utility_dict['connection_string'], container_name=utility_dict['container_name'])
         tm26 = time.time()
         df2 = data
         df2 = df2[(df2[utility_dict['engine_load']]>=30)&(df2[utility_dict['engine_load']]<=100)]
@@ -467,7 +474,8 @@ class pdm_ml_model():
         load_delta = {}  
         
         for cyl in range(1,self.cyl_count+1):
-            cyl_df = pd.read_csv(self.ts_res+utility_dict['Vessel_name']+'_ENG_{}_TS_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]),index_col=False)
+            cyl_df = read_data_from_blob('Data/'+utility_dict['Vessel_name']+'/Results/TS/'+utility_dict['Vessel_name']+'_ENG_{}_TS_res_Cyl_{}_{}.csv'.format(str(eng),str(cyl),str(datetime.now()).split(' ')[0]),False,container_client)
+            # cyl_df = pd.read_csv(self.ts_res+utility_dict['Vessel_name']+'_ENG_{}_TS_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]),index_col=False)
             load_ranges = list(cyl_df[utility_dict['engine_load']].unique())
             for loads in load_ranges:
                 load_delta[loads] = abs(df2[utility_dict['engine_load']]-loads)  
@@ -570,7 +578,12 @@ class pdm_ml_model():
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds] =  [re[0] for re in y_pred.tolist()]    
                     
             
-            cyl_df.to_csv(self.ml_res+utility_dict['Vessel_name']+'_ENG_{}_TS_ML_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]),index=False)   
+            cyl_df_csv = cyl_df.to_csv(index=False)
+            cyl_df_csv_bytes = bytes(cyl_df_csv, 'utf-8')
+            cyl_df_csv_stream = StringIO(cyl_df_csv)
+            container_client.upload_blob(name="Data/"+utility_dict['Vessel_name']+'/Results/ML/'+utility_dict['Vessel_name']+'_ENG_{}_TS_ML_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]), data=cyl_df_csv_bytes,overwrite=True)
+            cyl_df_csv_stream.close()
+            # cyl_df.to_csv(self.ml_res+utility_dict['Vessel_name']+'_ENG_{}_TS_ML_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]),index=False)   
         print('Ml predictions completed!!!')
         tm28 = time.time() 
         print('Total time for ml model part :',tm28-tm26)

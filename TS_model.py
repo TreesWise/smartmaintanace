@@ -132,6 +132,9 @@ import time
 from datetime import datetime
 import yaml
 
+from azure.storage.blob import ContainerClient
+from io import StringIO
+
 with open('cbm_yaml.yml','r') as file:
     utility_dict = yaml.safe_load(file)
     
@@ -267,6 +270,8 @@ class pdm_ts_model():
         self.ts_model = tf.keras.models.load_model(self.ts_model_path)
     
     def Timeseries(self, new_data,eng):
+        container_client = ContainerClient.from_connection_string(
+        utility_dict['connection_string'], container_name=utility_dict['container_name'])
         t1 = time.time()
         #part for test data
         df = new_data
@@ -314,7 +319,12 @@ class pdm_ts_model():
             #inverse scaling y
             y_pred_real = self.scaler_out_train_m.inverse_transform(predictons[-1].reshape(-1,len(self.scaler_out_train_m.feature_names_in_)))
             df_pred = pd.DataFrame(y_pred_real, columns=utility_dict['TS_frame_colnames'])
-            df_pred.to_csv(self.res_loc+utility_dict['Vessel_name']+'_ENG_{}_TS_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]), index=False)
+            df_pred_csv = df_pred.to_csv(index=False)
+            df_pred_csv_bytes = bytes(df_pred_csv, 'utf-8')
+            df_pred_csv_stream = StringIO(df_pred_csv)
+            container_client.upload_blob(name="Data/"+utility_dict['Vessel_name']+'/Results/TS/'+utility_dict['Vessel_name']+'_ENG_{}_TS_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]), data=df_pred_csv_bytes,overwrite=True)
+            df_pred_csv_stream.close()
+            # df_pred.to_csv(self.res_loc+utility_dict['Vessel_name']+'_ENG_{}_TS_res_Cyl_{}_{}.csv'.format(str(eng),cyl,str(datetime.now()).split(' ')[0]), index=False)
             #print('Cylinder_'+str(cyl)+' timeseries prediction completed!!!')
 
         t2 = time.time()

@@ -447,6 +447,7 @@ from helper import authenticate_user, create_access_token, get_current_active_us
 from custom_data_type import Token, User
 
 import pandas as pd
+from azure.storage.blob import ContainerClient
 from io import StringIO
 import json
 import numpy as np
@@ -488,7 +489,6 @@ with open('data_collect_dict.pickle','rb') as file2:
 # model = AE()
 # model.load_state_dict(torch.load(utility_dict['AE_path'], map_location=torch.device('cpu')))
 # model.eval()
-
 #TS model loading
 ts_model =  utility_dict['TS_model_path']#load ts model here
 x_scale = utility_dict['TS_scale_x']#load X_scaler model here
@@ -550,34 +550,51 @@ async def preprocess_dataset(data):
     pass
 
 
-def data_preprocess(raw_data_path):
-    df = pd.read_csv(raw_data_path, index_col=utility_dict['index'])
+def data_preprocess(raw_data_path,container_client):
+    df = read_data_from_blob(raw_data_path,utility_dict['index'],container_client)
+    # df = pd.read_csv(raw_data_path, index_col=utility_dict['index'])
     df = df[(df[utility_dict['engine_load']] >= 30) & (df[utility_dict['engine_load']] <= 100)]
     #last 336 datapoints
     df = df.iloc[-utility_dict['look_back']:,:]
     return df
+def read_data_from_blob(dataset_name,idx_col,container_client):
+    # try:
+    data = pd.read_csv(StringIO(container_client.download_blob(dataset_name).content_as_text()),index_col=idx_col)
+    return data
+
 def data_collect(utility_dict,dict1):
+    container_client = ContainerClient.from_connection_string(
+    utility_dict['connection_string'], container_name=utility_dict['container_name'])
     call = api_data_collection(1) #if no. o days are more than one uncomment sleep in data_collection_api.py
     for tr in range(1,int(utility_dict['engine_number'])+1):
         table = 'ems_'+str(tr)+'_signals'
         data_call = call.data_collect(utility_dict['Data_api']['login'],utility_dict['Data_api']['pass'],dict1['req_col'],dict1['col_map'],table)
-        cur_data = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],index_col=utility_dict['index'])
+        # blob_name_data_update = 'Data/Mu Lan/Engine_2/Train/Combined_data_eng2_diesel_1hr_bfill_v2.csv'
+        cur_data = read_data_from_blob('Data/'+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],utility_dict['index'],container_client)
+        # cur_data = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],index_col=utility_dict['index'])
         df_comb = pd.concat([cur_data,data_call])
         df_comb.reset_index(inplace=True)
         df_comb.drop_duplicates(subset=[utility_dict['index']],inplace=True)
         df_comb.set_index(df_comb[utility_dict['index']],inplace=True,drop=True)
         df_comb.drop(columns=[utility_dict['index']],inplace=True)
-        df_comb.to_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'])
+        data_update_csv = df_comb.to_csv()
+        data_update_csv_bytes = bytes(data_update_csv, 'utf-8')
+        data_update_csv_stream = StringIO(data_update_csv)
+        container_client.upload_blob(name='Data/'+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'], data=data_update_csv_bytes,overwrite=True)
+        data_update_csv_stream.close()
+        # df_comb.to_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'])
     print('Data collection completed')
 
 @app.post("/forecast-14days")
 async def forecast_14days(current_user: User = Depends(get_current_active_user)):
     data_collect(utility_dict,dict1)
+    container_client = ContainerClient.from_connection_string(
+    utility_dict['connection_string'], container_name=utility_dict['container_name'])
     start_time = time.time()
     new_data_path = utility_dict['forecast_data_path']
     vessel_name = utility_dict['Vessel_name']
     for eng in range(1,int(utility_dict['engine_number'])+1):
-        data = data_preprocess(new_data_path+vessel_name+'/Engine_'+str(eng)+'/Test/API_data_Test.csv')
+        data = data_preprocess('Data/'+vessel_name+'/Engine_'+str(eng)+'/Test/API_data_Test.csv',container_client)
         
 
         #-------------------> TS_model calling
@@ -586,7 +603,8 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
 
         #-------------------> AUTOENCODE
         #data preprocessing - This will be filtered past data + new data
-        df = pd.read_csv(utility_dict['preprocess_data_path'],index_col=utility_dict['index'])
+        df = read_data_from_blob('Data/'+vessel_name+'/Engine_'+str(eng)+'/Train/Combined_data_eng2_diesel_1hr_bfill_v2.csv',utility_dict['index'],container_client)
+        # df = pd.read_csv(utility_dict['preprocess_data_path'],index_col=utility_dict['index'])
         # df = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(eng)+utility_dict['test_data'],index_col=utility_dict['index']) #chnage test to train folder
         # df_norm_obj_test = Transform_data(df)
         # df_norm_test = df_norm_obj_test.normalize()
@@ -616,14 +634,20 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
         mapping_loc = utility_dict['forecast_data_path']+'/'+utility_dict['Vessel_name']+'/Results/Mapping_res/'
         output_dict = {}
         for i in range(1,ML.cyl_count+1):#------------ML.cyl_count+1
-            ml_ress = pd.read_csv(ml_res_loc+utility_dict['Vessel_name']+'_ENG_{}_TS_ML_res_Cyl_{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]),index_col=False)
+            ml_ress = read_data_from_blob("Data/"+utility_dict['Vessel_name']+'/Results/ML/'+utility_dict['Vessel_name']+'_ENG_{}_TS_ML_res_Cyl_{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]),False,container_client)  
+            # ml_ress = pd.read_csv(ml_res_loc+utility_dict['Vessel_name']+'_ENG_{}_TS_ML_res_Cyl_{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]),index_col=False)
             ff = Faults_Mapping(ml_ress,fault_mat_loc,Efd_features,p)
             ff1,fault_ids = ff.Mapping()
             ml_ress = pd.concat([ml_ress,ff1[fault_ids]],axis=1)
             ml_ress[utility_dict['index2']] = final_indx
             #for ordering columns
             ml_ress = ml_ress[utility_dict['end_res_colorder']]
-            ml_ress.to_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]),index=False)
+            ml_ress_csv = ml_ress.to_csv(index=False)
+            ml_ress_csv_bytes = bytes(ml_ress_csv, 'utf-8')
+            ml_ress_csv_stream = StringIO(ml_ress_csv)
+            container_client.upload_blob(name='Data/'+utility_dict['Vessel_name']+'/Results/Mapping_res/'+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]), data=ml_ress_csv_bytes,overwrite=True)
+            ml_ress_csv_stream.close()
+            # ml_ress.to_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(eng),str(i),str(datetime.now()).split(' ')[0]),index=False)
             output_dict['Cyl_'+str(i)] = ml_ress.to_dict(orient='list')
         end_time = time.time()
         print('total time taken for 14 days forecast',end_time-start_time)
@@ -730,7 +754,8 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
         output_format_mapping['Engine_data']['Engine_'+str(engg)] = {}
         for i in range(1,ML.cyl_count+1):
             output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)] = {}
-            cyl_ff = pd.read_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(engg),str(i),str(datetime.now()).split(' ')[0]), index_col='Date Time')
+            cyl_ff = read_data_from_blob("Data/"+utility_dict['Vessel_name']+'/Results/Mapping_res/'+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(engg),str(i),str(datetime.now()).split(' ')[0]),utility_dict['index2'],container_client)
+            # cyl_ff = pd.read_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(engg),str(i),str(datetime.now()).split(' ')[0]), index_col='Date Time')
             for r,c in cyl_ff.iterrows():
                 indx = rating_level(c)
                 mapped = '||'.join([output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],utility_dict) if v not in ['3','2','1'] else output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],None) for k,v in indx.items()])
@@ -744,19 +769,29 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
     # 2)no of engines
     # 3)VESSEL_OBJECT_ID
     # 4)JOB_PLAN_ID
-    with open(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(int(time.time()))+'.pickle','wb') as file1:
-        pickle.dump(output_format_mapping,file1)
+    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(int(time.time()))+'.pickle')
+    output_format_mapping_bytes = pickle.dumps(output_format_mapping)
+    blob_client.upload_blob(output_format_mapping_bytes,overwrite=True)
+    # with open(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(int(time.time()))+'.pickle','wb') as file1:
+    #     pickle.dump(output_format_mapping,file1)
     return output_format_mapping
 
 @app.post("/smart_maintenance")
 async def smart_maintenance(current_user: User = Depends(get_current_active_user)):
-    path_endpoint = './utils/Data/'+utility_dict['Vessel_name']+'/Results/combined_res'
-    path_endpoint_list = os.listdir(path_endpoint)
+    # path_endpoint = './utils/Data/'+utility_dict['Vessel_name']+'/Results/combined_res'
+    # path_endpoint_list = os.listdir(path_endpoint)
+    container_client = ContainerClient.from_connection_string(
+    utility_dict['connection_string'], container_name=utility_dict['container_name'])
+    path_endpoint_list = list(container_client.list_blobs('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'))
+    path_endpoint_list = [blobs['name'].split('/')[-1] for blobs in path_endpoint_list]
     epochss = []
     for fl in path_endpoint_list:
         epochss.append(int(fl.split('_')[1].split('.')[0]))
-    max(epochss)    
-    with open(path_endpoint+'/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle','rb') as file3:
-        end_point_result = pickle.load(file3)   
+    print(max(epochss))    
+    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle')
+    pickled_data = blob_client.download_blob().readall()
+    end_point_result = pickle.loads(pickled_data)
+    # with open(path_endpoint+'/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle','rb') as file3:
+        # end_point_result = pickle.load(file3)   
     # Return the prediction as JSON
     return end_point_result

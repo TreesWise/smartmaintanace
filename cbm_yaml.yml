@@ -208,6 +208,9 @@ rating_level:
 Data_api:
   login: 'bsm'
   pass: 'gdxUNq7Asstdk'
+
+container_name: 'cbm-utilis'  
+connection_string: 'DefaultEndpointsProtocol=https;AccountName=cbmprod;AccountKey=cUYLRzpr73pAI7pp6z5RDDJg8aNBvG32/cfwbqLGPhVfETIsNq/LryweoG/gsV7++b9IsRvS7M5A+AStTSsvLw==;EndpointSuffix=core.windows.net'
   
 
   

@@ -175,28 +175,49 @@ JOB_PLAN_ID: 10012
 EQUIPMENT_CODE : 'abc' 
 EQUIPMENT_ID : 789
 Vessel_name: 'Mu Lan'
-
+#CD/ED/DF
 faults_recom:
-  Injection system fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
-  Start of injection too late : ['Check VIT system']
-  Start of injection too early : ['Check VIT system']
-  Exhaust valve leaking : ['Check exhaust valve/seat condition']
-  Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
-  Exhaust valve early opening : ['Check exhaust valve timing mechanism','Check camshaft condition']
-  Exhaust valve late opening : ['Check exhaust valve timing mechanism','Check camshaft condition']
-  Exhaust valve early closure : ['Check exhaust valve timing mechanism','Check camshaft condition']
-  Exhaust valve late closure : ['Check exhaust valve timing mechanism','Check camshaft condition']
-  
+  CD:
+    Injection system fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
+    Start of injection too late : ['Check VIT system']
+    Start of injection too early : ['Check VIT system']
+    Exhaust valve leaking : ['Check exhaust valve/seat condition']
+    Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
+    Exhaust valve early opening : ['Check exhaust valve timing mechanism','Check camshaft condition']
+    Exhaust valve late opening : ['Check exhaust valve timing mechanism','Check camshaft condition']
+    Exhaust valve early closure : ['Check exhaust valve timing mechanism','Check camshaft condition']
+    Exhaust valve late closure : ['Check exhaust valve timing mechanism','Check camshaft condition']
+  ED:
+    Injection system fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
+    Start of injection too late : ['Check VIT system']
+    Start of injection too early : ['Check VIT system']
+    Exhaust valve leaking : ['Check exhaust valve/seat condition']
+    Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
+    Exhaust valve early opening : ['Check exhaust valve timing mechanism']
+    Exhaust valve late opening : ['Check exhaust valve timing mechanism']
+    Exhaust valve early closure : ['Check exhaust valve timing mechanism']
+    Exhaust valve late closure : ['Check exhaust valve timing mechanism']
+  DF:
+    Injection system fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
+    Start of injection too late : ['Check VIT system']
+    Start of injection too early : ['Check VIT system']
+    Exhaust valve leaking : ['Check exhaust valve/seat condition']
+    Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
+    Exhaust valve early opening : ['Check exhaust valve timing mechanism']
+    Exhaust valve late opening : ['Check exhaust valve timing mechanism']
+    Exhaust valve early closure : ['Check exhaust valve timing mechanism']
+    Exhaust valve late closure : ['Check exhaust valve timing mechanism']  
+
 Fault_ids:
-  InjSysFault: ['1','Injection system fault']
-  StaInjLate: ['2','Start of injection too late']
-  StaInjEarly: ['3','Start of injection too early']
-  ExhValvLeak: ['4','Exhaust valve leaking']
-  BloCombChabr: ['5','Blow-by in combustion chamber']
-  ExhValEarOpn: ['6','Exhaust valve early opening']
-  ExhValLatOpn: ['7','Exhaust valve late opening']
-  ExhValEarlClos: ['8','Exhaust valve early closure']
-  ExhValLatClos: ['9','Exhaust valve late closure']
+  InjSysFault: ['201','Injection system fault']
+  StaInjLate: ['202','Start of injection too late']
+  StaInjEarly: ['203','Start of injection too early']
+  ExhValvLeak: ['204','Exhaust valve leaking']
+  BloCombChabr: ['205','Blow-by in combustion chamber']
+  ExhValEarOpn: ['206','Exhaust valve early opening']
+  ExhValLatOpn: ['207','Exhaust valve late opening']
+  ExhValEarlClos: ['208','Exhaust valve early closure']
+  ExhValLatClos: ['209','Exhaust valve late closure']
 
 
 rating_level:
@@ -211,6 +232,17 @@ Data_api:
 
 container_name: 'cbm-utilis'  
 connection_string: 'DefaultEndpointsProtocol=https;AccountName=cbmprod;AccountKey=cUYLRzpr73pAI7pp6z5RDDJg8aNBvG32/cfwbqLGPhVfETIsNq/LryweoG/gsV7++b9IsRvS7M5A+AStTSsvLw==;EndpointSuffix=core.windows.net'
-  
 
+Ftype: 'DF'  
+
+
+{"Vessel_info": {
+    "Vessel_Name": "Mu Lan",
+    "VESSEL_OBJECT_ID": 123456789,
+    "JOB_PLAN_ID": 10012,
+    "EQUIPMENT_CODE": "", 
+     "EQUIPMENT_ID": "Eng_",
+  }}
   
+add_feature1 : 'Fuel oil temperature supply unit(ams)'
+add_feature2 : 'Fuel oil temperature supply unit(ams)'

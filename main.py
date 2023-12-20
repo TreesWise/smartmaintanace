@@ -464,6 +464,8 @@ import torch
 import warnings
 warnings.filterwarnings('ignore')
 
+#data scraping
+from web_scraping import wingd_scraper
 #data collection
 from data_collection_api import api_data_collection
 #time series model
@@ -563,6 +565,7 @@ def read_data_from_blob(dataset_name,idx_col,container_client):
     return data
 
 def data_collect(utility_dict,dict1):
+    scrap_data = wingd_scraper()
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
     call = api_data_collection(1) #if no. o days are more than one uncomment sleep in data_collection_api.py
@@ -577,6 +580,8 @@ def data_collect(utility_dict,dict1):
         df_comb.drop_duplicates(subset=[utility_dict['index']],inplace=True)
         df_comb.set_index(df_comb[utility_dict['index']],inplace=True,drop=True)
         df_comb.drop(columns=[utility_dict['index']],inplace=True)
+        df_comb[utility_dict['add_feature1']] = scrap_data['Fuel oil temperature supply unit (me_'+str(tr)+'_signals)']
+        df_comb[utility_dict['add_feature2']] = scrap_data['TC Bearing Oil Pressure Inlet TC #01 (me_'+str(tr)+'_signals)']
         data_update_csv = df_comb.to_csv()
         data_update_csv_bytes = bytes(data_update_csv, 'utf-8')
         data_update_csv_stream = StringIO(data_update_csv)
@@ -652,13 +657,13 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
         end_time = time.time()
         print('total time taken for 14 days forecast',end_time-start_time)
     
-    def output_format(rl,typo,des,utility_dict):
+    def output_format(rl,typo,des,utility_dict,Ftype):
     # rl - 
         if utility_dict!=None:
-            er=','.join(utility_dict['faults_recom'][des])
-            return '({})({})-{}-{}'.format(str(rl),typo,des,er)
+            er=','.join(utility_dict['faults_recom'][Ftype][des])
+            return '({})({})-{}-{}'.format(str(rl),typo,'There is a high chance for the occurrence of this fault within two weeks;'+des,er)
         else:
-            er='Perfect'
+            er='All values are fine for this fault'
             return '({})({})-{}-{}'.format(str(rl),typo,des,er)
 
     def rating_level(row):
@@ -758,7 +763,7 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
             # cyl_ff = pd.read_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(engg),str(i),str(datetime.now()).split(' ')[0]), index_col='Date Time')
             for r,c in cyl_ff.iterrows():
                 indx = rating_level(c)
-                mapped = '||'.join([output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],utility_dict) if v not in ['3','2','1'] else output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],None) for k,v in indx.items()])
+                mapped = '||'.join([output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],utility_dict,utility_dict['Ftype']) if v not in ['3','2','1'] else output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],None,utility_dict['Ftype']) for k,v in indx.items()])
                 output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)].update({str(r):mapped})
 
     # for i in range(1,ML.cyl_count+1):

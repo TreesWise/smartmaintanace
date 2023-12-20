@@ -24,6 +24,7 @@ class api_data_collection():
                 df = df.rename(columns=col_dict) 
                 df.index = pd.to_datetime(df.index) 
                 df = df.resample('1H').bfill()
+                df = df.bfill()
                 #calculating mean,min,max for features
                 for pat in [re.compile(r'Exh\. valve opening angle Cyl'),re.compile(r'Firing Pr\. Balancing Injection Offset Cyl'),
                             re.compile(r'Start of Injection Cyl')]:

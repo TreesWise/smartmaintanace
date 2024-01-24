@@ -236,13 +236,13 @@ connection_string: 'DefaultEndpointsProtocol=https;AccountName=cbmprod;AccountKe
 Ftype: 'DF'  
 
 
-{"Vessel_info": {
-    "Vessel_Name": "Mu Lan",
-    "VESSEL_OBJECT_ID": 123456789,
-    "JOB_PLAN_ID": 10012,
-    "EQUIPMENT_CODE": "", 
-     "EQUIPMENT_ID": "Eng_",
-  }}
+# {"Vessel_info": {
+#     "Vessel_Name": "Mu Lan",
+#     "VESSEL_OBJECT_ID": 123456789,
+#     "JOB_PLAN_ID": 10012,
+#     "EQUIPMENT_CODE": "", 
+#      "EQUIPMENT_ID": "Eng_",
+#   }}
   
 add_feature1 : 'Fuel oil temperature supply unit(ams)'
 add_feature2 : 'Fuel oil temperature supply unit(ams)'

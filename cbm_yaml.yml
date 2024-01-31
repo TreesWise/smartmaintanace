@@ -246,3 +246,8 @@ Ftype: 'DF'
   
 add_feature1 : 'Fuel oil temperature supply unit(ams)'
 add_feature2 : 'Fuel oil temperature supply unit(ams)'
+
+# AE part
+AE_scaler_path : './utils/AE_model/input_scaler_final.joblib'
+AE_model_path : './utils/AE_model/AE_model_final.keras'
+AE_threshold : 5530.5791015625

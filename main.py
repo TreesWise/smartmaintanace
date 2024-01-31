@@ -470,6 +470,8 @@ warnings.filterwarnings('ignore')
 from data_collection_api import api_data_collection
 #time series model
 from TS_model import pdm_ts_model
+#AE model
+from Auto_encoder_model import pdm_AE_model
 #ml model
 from ML_model import pdm_ml_model
 #fault mapping
@@ -571,7 +573,9 @@ def data_collect(utility_dict,dict1):
     call = api_data_collection(1) #if no. o days are more than one uncomment sleep in data_collection_api.py
     for tr in range(1,int(utility_dict['engine_number'])+1):
         table = 'ems_'+str(tr)+'_signals'
-        data_call = call.data_collect(utility_dict['Data_api']['login'],utility_dict['Data_api']['pass'],dict1['req_col'],dict1['col_map'],table)
+        table1 = 'me_'+str(tr)+'_signals'
+        table2 = 'ems_'+str(tr)+'_failures'
+        data_call = call.data_collect(utility_dict['Data_api']['login'],utility_dict['Data_api']['pass'],dict1['req_col'],dict1['col_map'],table,table1,table2)
         # blob_name_data_update = 'Data/Mu Lan/Engine_2/Train/Combined_data_eng2_diesel_1hr_bfill_v2.csv'
         cur_data = read_data_from_blob('Data/'+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],utility_dict['index'],container_client)
         # cur_data = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],index_col=utility_dict['index'])
@@ -606,9 +610,17 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
         TS_result = TS.Timeseries(data,eng)
 
 
-        #-------------------> AUTOENCODE
+        #-------------------> AUTOENCODER
         #data preprocessing - This will be filtered past data + new data
         df = read_data_from_blob('Data/'+vessel_name+'/Engine_'+str(eng)+'/Train/Combined_data_eng2_diesel_1hr_bfill_v2.csv',utility_dict['index'],container_client)
+        df = df[(df[utility_dict['engine_load']]>=30)&(df[utility_dict['engine_load']]<=100)]  
+        df['Ntc_Pscav'] = df['Turbocharger 1 speed(ems)']/df['Scav. Air Press. Mean Value(ems)']
+        df['PR'] = df['Firing Pressure Average(ems)']-df['Compression Pressure Average(ems)']
+        df['Pcomp_Pscav'] = df['Compression Pressure Average(ems)']/df['Scav. Air Press. Mean Value(ems)']
+        # df.drop(columns=['Estimated power(scr)'],inplace=True)
+        df.index = pd.to_datetime(df.index)
+        ae = pdm_AE_model()
+        df = ae.AE(df)[0]
         # df = pd.read_csv(utility_dict['preprocess_data_path'],index_col=utility_dict['index'])
         # df = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(eng)+utility_dict['test_data'],index_col=utility_dict['index']) #chnage test to train folder
         # df_norm_obj_test = Transform_data(df)

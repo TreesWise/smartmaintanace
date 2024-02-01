@@ -251,3 +251,57 @@ add_feature2 : 'Fuel oil temperature supply unit(ams)'
 AE_scaler_path : './utils/AE_model/input_scaler_final.joblib'
 AE_model_path : './utils/AE_model/AE_model_final.keras'
 AE_threshold : 5530.5791015625
+
+
+#API input part
+Engine1_inputs:
+  Cyl_1:
+    Eqp_Code:  '601.01.03'
+    Eqp_ID: 99990003118813
+    Job_Plan_ID: 99990003146903 
+  Cyl_2:
+    Eqp_Code: '601.01.03'
+    Eqp_ID: 99990003118813
+    Job_Plan_ID: 99990003146903
+  Cyl_3:
+    Eqp_Code: '601.01.03'
+    Eqp_ID: 99990003118813
+    Job_Plan_ID: 99990003146903
+  Cyl_4:
+    Eqp_Code: '601.01.03'
+    Eqp_ID: 99990003118813
+    Job_Plan_ID: 99990003146903
+  Cyl_5:
+    Eqp_Code: '601.01.03'
+    Eqp_ID: 99990003118813
+    Job_Plan_ID: 99990003146903
+  Cyl_6:
+    Eqp_Code: '601.01.03'
+    Eqp_ID: 99990003118813
+    Job_Plan_ID: 99990003146903
+
+Engine2_inputs:
+  Cyl_1:
+    Eqp_Code: '601.02.03'
+    Eqp_ID: 99990003126508
+    Job_Plan_ID: 99990003152736
+  Cyl_2:
+    Eqp_Code: '601.02.03'
+    Eqp_ID: 99990003126508
+    Job_Plan_ID: 99990003152736
+  Cyl_3:
+    Eqp_Code: '601.02.03'
+    Eqp_ID: 99990003126508
+    Job_Plan_ID: 99990003152736
+  Cyl_4:
+    Eqp_Code: '601.02.03'
+    Eqp_ID: 99990003126508
+    Job_Plan_ID: 99990003152736
+  Cyl_5:
+    Eqp_Code: '601.02.03'
+    Eqp_ID: 99990003126508
+    Job_Plan_ID: 99990003152736
+  Cyl_6:
+    Eqp_Code: '601.02.03'
+    Eqp_ID: 99990003126508
+    Job_Plan_ID: 99990003152736           

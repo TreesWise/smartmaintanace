@@ -444,7 +444,7 @@ from datetime import timedelta
 from config import ACCESS_TOKEN_EXPIRE_MINUTES
 from database_conn import database
 from helper import authenticate_user, create_access_token, get_current_active_user
-from custom_data_type import Token, User
+from custom_data_type import Token, User, pdm_inputs
 
 import pandas as pd
 from azure.storage.blob import ContainerClient
@@ -770,13 +770,13 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
     for engg in range(1,int(utility_dict['engine_number'])+1):
         output_format_mapping['Engine_data']['Engine_'+str(engg)] = {}
         for i in range(1,ML.cyl_count+1):
-            output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)] = [123,'abc',{}]
+            output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)] = {}
             cyl_ff = read_data_from_blob("Data/"+utility_dict['Vessel_name']+'/Results/Mapping_res/'+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(engg),str(i),str(datetime.now()).split(' ')[0]),utility_dict['index2'],container_client)
             # cyl_ff = pd.read_csv(mapping_loc+utility_dict['Vessel_name']+'_Eng_{}_mapping_res_cyl{}_{}.csv'.format(str(engg),str(i),str(datetime.now()).split(' ')[0]), index_col='Date Time')
             for r,c in cyl_ff.iterrows():
                 indx = rating_level(c)
                 mapped = '||'.join([output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],utility_dict,utility_dict['Ftype']) if v not in ['3','2','1'] else output_format(indx[k],utility_dict['Fault_ids'][k][0],utility_dict['Fault_ids'][k][1],None,utility_dict['Ftype']) for k,v in indx.items()])
-                output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)][2].update({str(r):mapped})
+                output_format_mapping['Engine_data']['Engine_'+str(engg)]['Cyl_'+str(i)].update({str(r):mapped})
 
     # for i in range(1,ML.cyl_count+1):
     #     cyl_ff = pd.read_excel(mapping_loc + 'mapping_res_cyl{}.xlsx'.format(str(i)), index_col='Date Time')
@@ -794,9 +794,10 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
     return output_format_mapping
 
 @app.post("/smart_maintenance")
-async def smart_maintenance(current_user: User = Depends(get_current_active_user)):
+async def smart_maintenance(userinput: pdm_inputs, current_user: User = Depends(get_current_active_user)):
     # path_endpoint = './utils/Data/'+utility_dict['Vessel_name']+'/Results/combined_res'
     # path_endpoint_list = os.listdir(path_endpoint)
+    pdm_inputs1 = userinput.dict()
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
     path_endpoint_list = list(container_client.list_blobs('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'))
@@ -808,7 +809,27 @@ async def smart_maintenance(current_user: User = Depends(get_current_active_user
     blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle')
     pickled_data = blob_client.download_blob().readall()
     end_point_result = pickle.loads(pickled_data)
-    # with open(path_endpoint+'/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle','rb') as file3:
-        # end_point_result = pickle.load(file3)   
-    # Return the prediction as JSON
-    return end_point_result
+    #New API format
+    api_format = {'totalRecords':4032,'surveys':[]}
+    measured_date = datetime.fromtimestamp(max(epochss))
+    upload_date  = datetime.now().strftime("%Y-%m-%d")
+    for i in utility_dict['Engine1_inputs'].keys():#pdm_inputs1['Engine1_inputs'].keys(): testing!!!!!!!!!!!!!!!
+        p1_dict = {}
+        p1_dict['id'] = pdm_inputs1['filter']['id']
+        p1_dict['uploadDate'] = upload_date
+        p1_dict['measureDate'] = measured_date.strftime("%Y-%m-%d")
+        p1_dict['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
+        p1_dict.update(utility_dict['Engine1_inputs'][i])
+        p1_dict.update({'findRecom':end_point_result['Engine_data']['Engine_1'][i]})
+        api_format['surveys'].append(p1_dict)
+    for j in utility_dict['Engine1_inputs'].keys():#pdm_inputs1['Engine2_inputs'].keys(): testing!!!!!!!!!!!!!!!
+        p2_dict = {}
+        p2_dict['id'] = pdm_inputs1['filter']['id']
+        p2_dict['uploadDate'] = upload_date
+        p2_dict['measureDate'] = measured_date.strftime("%Y-%m-%d")
+        p2_dict['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
+        p2_dict.update(utility_dict['Engine2_inputs'][j])
+        p2_dict.update({'findRecom':end_point_result['Engine_data']['Engine_2'][j]})
+        api_format['surveys'].append(p2_dict)
+    final_api_format = {'status':200,'data':api_format}    
+    return final_api_format

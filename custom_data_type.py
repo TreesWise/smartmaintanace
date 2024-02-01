@@ -1,4 +1,4 @@
-from typing import Union,TypedDict
+from typing import Union,TypedDict,List
 from pydantic import BaseModel
 
 class Token(BaseModel):
@@ -19,7 +19,7 @@ class UserInDB(User):
 
 class Engineinfo(BaseModel):
     id: int
-    shipCustom1: str
+    shipCustom1: List=None
 class pdm_inputs(BaseModel):
     filter: Engineinfo      
 

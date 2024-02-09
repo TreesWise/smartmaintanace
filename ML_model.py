@@ -506,6 +506,8 @@ class pdm_ml_model():
             get_null_index = cyl_df.loc[cyl_df.matched_load=='No Values'].index #get null index for remove from input to ML model
             # df = df2.loc[list(cyl_df['matched_date'])]
             df = df2.loc[list(cyl_df.loc[~cyl_df.index.isin(get_null_index)]['matched_date'])]
+            df.to_csv('checker2.csv')
+            print('shape of df -',df.shape)
             for efds in self.Efd_features:# ['Pscav','Pcomp','Pmax','Texh','Ntc','Ntc_Pscav','Pcomp_Pscav','PR']
                 if efds == utility_dict['efd_features'][0]: #EFD1
                     # print('Pcomp_Pscav')           
@@ -516,6 +518,9 @@ class pdm_ml_model():
                     y_pred = self.Pcomp_Pscav_ml_model.predict(model_inputs)
                     y_pred = self.Pcomp_Pscav_scaler_y.inverse_transform(y_pred.reshape(-1,1))
                     # cyl_df['Ref_'+efds]  =  [re[0] for re in y_pred.tolist()]
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]  =  [re[0] for re in y_pred.tolist()]
                 elif efds == utility_dict['efd_features'][1]: #EFD2
                     # print('PR')
@@ -524,6 +529,9 @@ class pdm_ml_model():
                     model_inputs = pd.DataFrame(self.PR_scaler_x.transform(np.asarray(model_inputs)),columns=self.PR_scaler_x.feature_names_in_)
                     y_pred = self.PR_ml_model.predict(model_inputs)                 
                     y_pred = self.PR_scaler_y.inverse_transform(y_pred.reshape(-1,1))
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]  =  [re[0] for re in y_pred.tolist()]
                 elif efds == utility_dict['efd_features'][4]: #EFD3
                     # print('Ntc_Pscav')                   
@@ -532,6 +540,9 @@ class pdm_ml_model():
                     model_inputs = pd.DataFrame(self.Ntc_Pscav_scaler_x.transform(np.asarray(model_inputs)),columns=self.Ntc_Pscav_scaler_x.feature_names_in_)
                     y_pred = self.Ntc_Pscav_ml_model.predict(model_inputs)                    
                     y_pred = self.Ntc_Pscav_scaler_y.inverse_transform(y_pred.reshape(-1,1))
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds] =  [re[0] for re in y_pred.tolist()]
                 #till here model retunned    
                 elif efds == utility_dict['efd_features'][2]: #EFD4
@@ -541,6 +552,9 @@ class pdm_ml_model():
                     model_inputs = pd.DataFrame(self.Pmax_scaler_x.transform(np.asarray(model_inputs)),columns=self.Pmax_scaler_x.feature_names_in_)
                     y_pred = self.Pmax_ml_model.predict(model_inputs)                  
                     y_pred = self.Pmax_scaler_y.inverse_transform(y_pred.reshape(-1,1))
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]  =  [re[0] for re in y_pred.tolist()]
                 elif efds == utility_dict['efd_features'][7]: #EFD5
                     # print('Texh')                    
@@ -549,6 +563,9 @@ class pdm_ml_model():
                     model_inputs = pd.DataFrame(self.Texh_scaler_x.transform(np.asarray(model_inputs)),columns=self.Texh_scaler_x.feature_names_in_)
                     y_pred = self.Texh_ml_model.predict(model_inputs)                    
                     y_pred = self.Texh_scaler_y.inverse_transform(y_pred.reshape(-1,1))
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]  =  [re[0] for re in y_pred.tolist()]
                 elif efds == utility_dict['efd_features'][3]: #EFD6
                     # print('Ntc')                   
@@ -557,6 +574,9 @@ class pdm_ml_model():
                     model_inputs = pd.DataFrame(self.Ntc_scaler_x.transform(np.asarray(model_inputs)),columns=self.Ntc_scaler_x.feature_names_in_)
                     y_pred = self.Ntc_ml_model.predict(model_inputs)                   
                     y_pred = self.Ntc_scaler_y.inverse_transform(y_pred.reshape(-1,1))
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]  =  [re[0] for re in y_pred.tolist()]
                 elif efds == utility_dict['efd_features'][5]: #EFD7
                     # print('Pcomp')                    
@@ -566,6 +586,9 @@ class pdm_ml_model():
                     y_pred = self.Pcomp_ml_model.predict(model_inputs)
                     #Applying scaling to outputs
                     y_pred = self.Pcomp_scaler_y.inverse_transform(y_pred.reshape(-1,1))
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]  =  [re[0] for re in y_pred.tolist()]
                 elif efds == utility_dict['efd_features'][6]: #EFD8
                     # print('Pscav')                   
@@ -575,6 +598,9 @@ class pdm_ml_model():
                     y_pred = self.Pscav_ml_model.predict(model_inputs)
                     #Applying scaling to outputs                     
                     y_pred = self.Pscav_scaler_y.inverse_transform(y_pred.reshape(-1,1))
+                    # print('get_null_index -',get_null_index)
+                    # print('y_pred - ',len(y_pred))
+                    # print('cyl_df -',len(cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds]))
                     cyl_df.loc[~cyl_df.index.isin(get_null_index),'Ref_'+efds] =  [re[0] for re in y_pred.tolist()]    
                     
             

@@ -64,8 +64,10 @@ class api_data_collection():
         full_df = pd.DataFrame()
         for dayy in range(self.number_days):
             chck_date = cur_date-timedelta(days=dayy)   
-            from_date = str(chck_date.year)+'-'+str(chck_date.month)+'-'+str(chck_date.day)+' 00:00:00'
-            to_date = str(chck_date.year)+'-'+str(chck_date.month)+'-'+str(chck_date.day)+' 23:59:59'
+            # from_date = str(chck_date.year)+'-'+str(chck_date.month)+'-'+str(chck_date.day)+' 00:00:00'
+            from_date = chck_date.strftime('%Y-%m-%d')+' 00:00:00'
+            # to_date = str(chck_date.year)+'-'+str(chck_date.month)+'-'+str(chck_date.day)+' 23:59:59'
+            to_date = chck_date.strftime('%Y-%m-%d')+' 23:59:59'
             payload = {'login':login,'password':pass1}
             response = requests.post('https://wingd-api.e-vesseltracker.com/auth/login',headers=payload)
             data = requests.get('https://wingd-api.e-vesseltracker.com/api/ship/9878876/'+table+'?',params={'column':col['EMS'],'from':from_date,'to':to_date},headers={'Token':response.json()['token']})

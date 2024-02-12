@@ -158,7 +158,7 @@ def data_collect(utility_dict,dict1):
 
 @app.post("/forecast-14days")
 async def forecast_14days(current_user: User = Depends(get_current_active_user)):
-    # data_collect(utility_dict,dict1)
+    data_collect(utility_dict,dict1)
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
     start_time = time.time()
@@ -401,8 +401,8 @@ async def smart_maintenance(userinput: pdm_inputs, current_user: User = Depends(
     api_format = {'totalRecords':48,'surveys':[]}
     measured_date = datetime.fromtimestamp(max(epochss)).strftime('%Y-%m-%d %H:%M:%S')
     upload_date  = datetime.now().strftime("%Y-%m-%d")
-    me1_faults = pd.read_excel(r'D:\envs\cbm\Codes\phase2_reducedcolumns\Data_merge\API_data\MuLAN Details.xlsx',sheet_name='ME1_filt')
-    me2_faults = pd.read_excel(r'D:\envs\cbm\Codes\phase2_reducedcolumns\Data_merge\API_data\MuLAN Details.xlsx',sheet_name='ME2_filt')
+    me1_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME1_filt')
+    me2_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME2_filt')
     def exists_consecutively(lst, element):
         count = 0
         for i in lst:

@@ -506,8 +506,8 @@ class pdm_ml_model():
             get_null_index = cyl_df.loc[cyl_df.matched_load=='No Values'].index #get null index for remove from input to ML model
             # df = df2.loc[list(cyl_df['matched_date'])]
             df = df2.loc[list(cyl_df.loc[~cyl_df.index.isin(get_null_index)]['matched_date'])]
-            df.to_csv('checker2.csv')
-            print('shape of df -',df.shape)
+            # df.to_csv('checker2.csv')
+            # print('shape of df -',df.shape)
             for efds in self.Efd_features:# ['Pscav','Pcomp','Pmax','Texh','Ntc','Ntc_Pscav','Pcomp_Pscav','PR']
                 if efds == utility_dict['efd_features'][0]: #EFD1
                     # print('Pcomp_Pscav')           

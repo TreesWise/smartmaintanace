@@ -310,6 +310,7 @@ class pdm_ts_model():
             model_inputs = df[list(self.scaler_inp_train_m.feature_names_in_)]
             scaled_inp_test = self.scaler_inp_train_m.transform(model_inputs)
             pos = np.array(range(1,self.look_back+1))/self.look_back
+            print('ts shape -',scaled_inp_test.shape)
             scaled_inp_test = np.append(scaled_inp_test,pos.reshape(-1,1),axis=1)
    
             X_new = scaled_inp_test.reshape((1, scaled_inp_test.shape[0], scaled_inp_test.shape[1]))

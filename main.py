@@ -158,7 +158,7 @@ def data_collect(utility_dict,dict1):
 
 @app.post("/forecast-14days")
 async def forecast_14days(current_user: User = Depends(get_current_active_user)):
-    data_collect(utility_dict,dict1)
+    # data_collect(utility_dict,dict1)
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
     start_time = time.time()
@@ -169,6 +169,7 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
         
 
         #-------------------> TS_model calling
+        print('ts input data -',data.shape)
         TS_result = TS.Timeseries(data,eng)
 
 

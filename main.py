@@ -132,29 +132,38 @@ def data_collect(utility_dict,dict1):
     # scrap_data = wingd_scraper()
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
-    call = api_data_collection(1) #if no. o days are more than one uncomment sleep in data_collection_api.py
-    for tr in range(1,int(utility_dict['engine_number'])+1):
-        table = 'ems_'+str(tr)+'_signals'
-        table1 = 'me_'+str(tr)+'_signals'
-        table2 = 'ems_'+str(tr)+'_failures'
-        data_call = call.data_collect(utility_dict['Data_api']['login'],utility_dict['Data_api']['pass'],dict1['req_col'],dict1['col_map'],table,table1,table2)
-        # blob_name_data_update = 'Data/Mu Lan/Engine_2/Train/Combined_data_eng2_diesel_1hr_bfill_v2.csv'
-        cur_data = read_data_from_blob('Data/'+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],utility_dict['index'],container_client)
-        # cur_data = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],index_col=utility_dict['index'])
-        df_comb = pd.concat([cur_data,data_call])
-        df_comb.reset_index(inplace=True)
-        df_comb.drop_duplicates(subset=[utility_dict['index']],inplace=True)
-        df_comb.set_index(df_comb[utility_dict['index']],inplace=True,drop=True)
-        df_comb.drop(columns=[utility_dict['index']],inplace=True)
-        # df_comb[utility_dict['add_feature1']] = scrap_data['Fuel oil temperature supply unit (me_'+str(tr)+'_signals)']
-        # df_comb[utility_dict['add_feature2']] = scrap_data['TC Bearing Oil Pressure Inlet TC #01 (me_'+str(tr)+'_signals)']
-        data_update_csv = df_comb.to_csv()
-        data_update_csv_bytes = bytes(data_update_csv, 'utf-8')
-        data_update_csv_stream = StringIO(data_update_csv)
-        container_client.upload_blob(name='Data/'+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'], data=data_update_csv_bytes,overwrite=True)
-        data_update_csv_stream.close()
-        # df_comb.to_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'])
-    print('Data collection completed')
+    with open('data_collection_history.pickle','rb') as h_file:
+        data_collection_hist = pickle.load(h_file) 
+    cur_date = datetime.now()-timedelta(days=1)
+    cur_run = datetime.strptime(cur_date.strftime('%Y-%m-%d'), "%Y-%m-%d")
+    last_run = datetime.strptime(data_collection_hist['Last_run_date'], "%Y-%m-%d")
+    days_to_run = (cur_run-last_run).days
+    if days_to_run == 0:
+        print('Dataset already updated')
+    else:
+        call = api_data_collection(days_to_run) #if no. o days are more than one uncomment sleep in data_collection_api.py
+        for tr in range(1,int(utility_dict['engine_number'])+1):
+            table = 'ems_'+str(tr)+'_signals'
+            table1 = 'me_'+str(tr)+'_signals'
+            table2 = 'ems_'+str(tr)+'_failures'
+            data_call = call.data_collect(utility_dict['Data_api']['login'],utility_dict['Data_api']['pass'],dict1['req_col'],dict1['col_map'],table,table1,table2)
+            # blob_name_data_update = 'Data/Mu Lan/Engine_2/Train/Combined_data_eng2_diesel_1hr_bfill_v2.csv'
+            cur_data = read_data_from_blob('Data/'+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],utility_dict['index'],container_client)
+            # cur_data = pd.read_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'],index_col=utility_dict['index'])
+            df_comb = pd.concat([cur_data,data_call])
+            df_comb.reset_index(inplace=True)
+            df_comb.drop_duplicates(subset=[utility_dict['index']],inplace=True)
+            df_comb.set_index(df_comb[utility_dict['index']],inplace=True,drop=True)
+            df_comb.drop(columns=[utility_dict['index']],inplace=True)
+            # df_comb[utility_dict['add_feature1']] = scrap_data['Fuel oil temperature supply unit (me_'+str(tr)+'_signals)']
+            # df_comb[utility_dict['add_feature2']] = scrap_data['TC Bearing Oil Pressure Inlet TC #01 (me_'+str(tr)+'_signals)']
+            data_update_csv = df_comb.to_csv()
+            data_update_csv_bytes = bytes(data_update_csv, 'utf-8')
+            data_update_csv_stream = StringIO(data_update_csv)
+            container_client.upload_blob(name='Data/'+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'], data=data_update_csv_bytes,overwrite=True)
+            data_update_csv_stream.close()
+            # df_comb.to_csv(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Engine_'+str(tr)+utility_dict['test_data'])
+        print('Data collection completed')
 
 @app.post("/forecast-14days")
 async def forecast_14days(current_user: User = Depends(get_current_active_user)):

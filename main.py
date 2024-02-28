@@ -352,7 +352,8 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
     # 2)no of engines
     # 3)VESSEL_OBJECT_ID
     # 4)JOB_PLAN_ID
-    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(int(time.time()))+'.pickle')
+    # blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(int(time.time()))+'.pickle')
+    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+datetime.now().strftime("%Y-%m-%d")+'.pickle')
     output_format_mapping_bytes = pickle.dumps(output_format_mapping)
     blob_client.upload_blob(output_format_mapping_bytes,overwrite=True)
     # with open(utility_dict['forecast_data_path']+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(int(time.time()))+'.pickle','wb') as file1:
@@ -366,137 +367,337 @@ async def smart_maintenance(userinput: pdm_inputs, current_user: User = Depends(
     pdm_inputs1 = userinput.dict()
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
-    path_endpoint_list = list(container_client.list_blobs('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'))
-    path_endpoint_list = [blobs['name'].split('/')[-1] for blobs in path_endpoint_list]
-    epochss = []
-    for fl in path_endpoint_list:
-        epochss.append(int(fl.split('_')[1].split('.')[0]))
-    print(max(epochss))    
-    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle')
-    pickled_data = blob_client.download_blob().readall()
-    end_point_result = pickle.loads(pickled_data)
-    #New API format
-    # api_format = {'totalRecords':4032,'surveys':[]}
-    # measured_date = datetime.fromtimestamp(max(epochss))
-    # upload_date  = datetime.now().strftime("%Y-%m-%d")
-    # for i in utility_dict['Engine1_inputs'].keys():#pdm_inputs1['Engine1_inputs'].keys(): testing!!!!!!!!!!!!!!!
-    #     p1_dict = {}
-    #     p1_dict['id'] = pdm_inputs1['filter']['id']
-    #     p1_dict['uploadDate'] = upload_date
-    #     p1_dict['measureDate'] = measured_date.strftime("%Y-%m-%d")
-    #     p1_dict['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
-    #     p1_dict.update(utility_dict['Engine1_inputs'][i])
-    #     p1_dict.update({'findRecom':end_point_result['Engine_data']['Engine_1'][i]})
-    #     api_format['surveys'].append(p1_dict)
-    # for j in utility_dict['Engine1_inputs'].keys():#pdm_inputs1['Engine2_inputs'].keys(): testing!!!!!!!!!!!!!!!
-    #     p2_dict = {}
-    #     p2_dict['id'] = pdm_inputs1['filter']['id']
-    #     p2_dict['uploadDate'] = upload_date
-    #     p2_dict['measureDate'] = measured_date.strftime("%Y-%m-%d")
-    #     p2_dict['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
-    #     p2_dict.update(utility_dict['Engine2_inputs'][j])
-    #     p2_dict.update({'findRecom':end_point_result['Engine_data']['Engine_2'][j]})
-    #     api_format['surveys'].append(p2_dict)
-    # final_api_format = {'status':200,'data':api_format}    
-    api_format = {'totalRecords':48,'surveys':[]}
-    measured_date = datetime.fromtimestamp(max(epochss)).strftime('%Y-%m-%d %H:%M:%S')
-    upload_date  = datetime.now().strftime("%Y-%m-%d")
-    me1_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME1_filt')
-    me2_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME2_filt')
-    def exists_consecutively(lst, element):
-        count = 0
-        for i in lst:
-            if i == element:
-                count += 1
-                if count == 10:
-                    return True
-            else:
-                count = 0
-        return False
-    for fault_cats in ['Combustion Blow-by','Injection System','Start of Inj','Exhaust Valve']: 
-          
-        for engs in end_point_result['Engine_data'].keys():
-            for engs_cyl in end_point_result['Engine_data'][engs].keys():
-                cyl_wise_end = {} 
-                f1 = pd.DataFrame(end_point_result['Engine_data'][engs][engs_cyl],index=['finding']).T
-                fault_cat = {}
-                fault_cat['Combustion Blow-by'] = {}
-                fault_cat['Injection System'] = {}
-                fault_cat['Start of Inj'] = {}
-                fault_cat['Exhaust Valve'] = {}
-                for fids in f1.index:
-                    for fids2 in f1.loc[fids,'finding'].split('||'):
-                        if 'Injection system fault' in fids2:
-                            fault_cat['Injection System'].update({fids:fids2}) #'Combustion Blow-by
-                        if 'Start of injection' in fids2:
-                            fault_cat['Start of Inj'].update({fids:fids2})
-                        if 'Exhaust valve' in fids2:
-                            # fault_cat['Exhaust Valve'].update({fids:fids2})  
-                            try:
-                                fault_cat['Exhaust Valve'][fids]+='||'+fids2
-                            except:
-                                fault_cat['Exhaust Valve'].update({fids:fids2}) 
-                        if 'Blow-by in combustion chamber' in fids2:
-                            fault_cat['Combustion Blow-by'].update({fids:fids2})
-                ll = pd.DataFrame(fault_cat[fault_cats],index=['findings']).T
-                ll['Date'] = list(map(lambda x:x.split(' ')[0],ll.index))
-                new_f = pd.DataFrame()
-                for llids in ll['Date'].unique():
-                    # new_f_sub = ll[ll['Date']==llids]['findings'].str.contains('There is a high chance for the occurrence of this fault within two weeks;').sum()
-                    new_f_sub = 1 if True in ll[ll['Date']==llids]['findings'].str.contains('There is a high chance for the occurrence of this fault within two weeks;').values else 0
-                    new_f = pd.concat([new_f,pd.DataFrame({'fault_status':new_f_sub},index=[llids])])
-                value_dict = {'val_3' : 0, 'val_2' : 0, 'val_1' : 0, 'val_0' : 0}
-                for count in ll['findings'].values:
-                    if '(3)' in count.split('-')[0]:
-                        value_dict['val_3']+=1
-                    elif '(2)' in count.split('-')[0]:
-                        value_dict['val_2']+=1  
-                    elif '(1)' in count.split('-')[0]:
-                        value_dict['val_1']+=1  
-                    elif '(0)' in count.split('-')[0]:
-                        value_dict['val_0']+=1         
-                id_max = list(dict(sorted(value_dict.items(),key=lambda x:x[1],reverse=True)).keys())[0].split('_')[1] 
-                trigger = exists_consecutively(new_f['fault_status'],1)
-                cyl_wise_end['id'] = pdm_inputs1['filter']['id']
-                cyl_wise_end['uploadDate'] = upload_date
-                cyl_wise_end['measureDate'] = measured_date
-                cyl_wise_end['faultIdHat'] = utility_dict['Fault_cats_ids'][fault_cats]
-                cyl_wise_end['faultDescrHat'] = fault_cats
-                cyl_wise_end['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
-                
-                if engs == 'Engine_1':
+    # path_endpoint_list = list(container_client.list_blobs('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'))
+    # path_endpoint_list = [blobs['name'].split('/')[-1] for blobs in path_endpoint_list]
+    # epochss = []
+    # for fl in path_endpoint_list:
+    #     epochss.append(int(fl.split('_')[1].split('.')[0]))
+    # print(max(epochss))    
+    # blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+str(max(epochss))+'.pickle')
+    try:
+        blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/combined_res/'+utility_dict['Vessel_name']+'_'+datetime.now().strftime("%Y-%m-%d")+'.pickle')
+        pickled_data = blob_client.download_blob().readall()
+        end_point_result = pickle.loads(pickled_data)
+        #New API format
+        # api_format = {'totalRecords':4032,'surveys':[]}
+        # measured_date = datetime.fromtimestamp(max(epochss))
+        # upload_date  = datetime.now().strftime("%Y-%m-%d")
+        # for i in utility_dict['Engine1_inputs'].keys():#pdm_inputs1['Engine1_inputs'].keys(): testing!!!!!!!!!!!!!!!
+        #     p1_dict = {}
+        #     p1_dict['id'] = pdm_inputs1['filter']['id']
+        #     p1_dict['uploadDate'] = upload_date
+        #     p1_dict['measureDate'] = measured_date.strftime("%Y-%m-%d")
+        #     p1_dict['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
+        #     p1_dict.update(utility_dict['Engine1_inputs'][i])
+        #     p1_dict.update({'findRecom':end_point_result['Engine_data']['Engine_1'][i]})
+        #     api_format['surveys'].append(p1_dict)
+        # for j in utility_dict['Engine1_inputs'].keys():#pdm_inputs1['Engine2_inputs'].keys(): testing!!!!!!!!!!!!!!!
+        #     p2_dict = {}
+        #     p2_dict['id'] = pdm_inputs1['filter']['id']
+        #     p2_dict['uploadDate'] = upload_date
+        #     p2_dict['measureDate'] = measured_date.strftime("%Y-%m-%d")
+        #     p2_dict['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
+        #     p2_dict.update(utility_dict['Engine2_inputs'][j])
+        #     p2_dict.update({'findRecom':end_point_result['Engine_data']['Engine_2'][j]})
+        #     api_format['surveys'].append(p2_dict)
+        # final_api_format = {'status':200,'data':api_format}    
+        # api_format = {'totalRecords':48,'surveys':[]}
+        # measured_date = datetime.fromtimestamp(max(epochss)).strftime('%Y-%m-%d %H:%M:%S')
+        # upload_date  = datetime.now().strftime("%Y-%m-%d")
+        # me1_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME1_filt')
+        # me2_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME2_filt')
+        # def exists_consecutively(lst, element):
+        #     count = 0
+        #     for i in lst:
+        #         if i == element:
+        #             count += 1
+        #             if count == 10:
+        #                 return True
+        #         else:
+        #             count = 0
+        #     return False
+        # for fault_cats in ['Combustion Blow-by','Injection System','Start of Inj','Exhaust Valve']: 
+            
+        #     for engs in end_point_result['Engine_data'].keys():
+        #         for engs_cyl in end_point_result['Engine_data'][engs].keys():
+        #             cyl_wise_end = {} 
+        #             f1 = pd.DataFrame(end_point_result['Engine_data'][engs][engs_cyl],index=['finding']).T
+        #             fault_cat = {}
+        #             fault_cat['Combustion Blow-by'] = {}
+        #             fault_cat['Injection System'] = {}
+        #             fault_cat['Start of Inj'] = {}
+        #             fault_cat['Exhaust Valve'] = {}
+        #             for fids in f1.index:
+        #                 for fids2 in f1.loc[fids,'finding'].split('||'):
+        #                     if 'Injection system fault' in fids2:
+        #                         fault_cat['Injection System'].update({fids:fids2}) #'Combustion Blow-by
+        #                     if 'Start of injection' in fids2:
+        #                         fault_cat['Start of Inj'].update({fids:fids2})
+        #                     if 'Exhaust valve' in fids2:
+        #                         # fault_cat['Exhaust Valve'].update({fids:fids2})  
+        #                         try:
+        #                             fault_cat['Exhaust Valve'][fids]+='||'+fids2
+        #                         except:
+        #                             fault_cat['Exhaust Valve'].update({fids:fids2}) 
+        #                     if 'Blow-by in combustion chamber' in fids2:
+        #                         fault_cat['Combustion Blow-by'].update({fids:fids2})
+        #             ll = pd.DataFrame(fault_cat[fault_cats],index=['findings']).T
+        #             ll['Date'] = list(map(lambda x:x.split(' ')[0],ll.index))
+        #             new_f = pd.DataFrame()
+        #             for llids in ll['Date'].unique():
+        #                 # new_f_sub = ll[ll['Date']==llids]['findings'].str.contains('There is a high chance for the occurrence of this fault within two weeks;').sum()
+        #                 new_f_sub = 1 if True in ll[ll['Date']==llids]['findings'].str.contains('There is a high chance for the occurrence of this fault within two weeks;').values else 0
+        #                 new_f = pd.concat([new_f,pd.DataFrame({'fault_status':new_f_sub},index=[llids])])
+        #             value_dict = {'val_3' : 0, 'val_2' : 0, 'val_1' : 0, 'val_0' : 0}
+        #             for count in ll['findings'].values:
+        #                 if '(3)' in count.split('-')[0]:
+        #                     value_dict['val_3']+=1
+        #                 elif '(2)' in count.split('-')[0]:
+        #                     value_dict['val_2']+=1  
+        #                 elif '(1)' in count.split('-')[0]:
+        #                     value_dict['val_1']+=1  
+        #                 elif '(0)' in count.split('-')[0]:
+        #                     value_dict['val_0']+=1         
+        #             id_max = list(dict(sorted(value_dict.items(),key=lambda x:x[1],reverse=True)).keys())[0].split('_')[1] 
+        #             trigger = exists_consecutively(new_f['fault_status'],1)
+        #             cyl_wise_end['id'] = pdm_inputs1['filter']['id']
+        #             cyl_wise_end['uploadDate'] = upload_date
+        #             cyl_wise_end['measureDate'] = measured_date
+        #             cyl_wise_end['faultIdHat'] = utility_dict['Fault_cats_ids'][fault_cats]
+        #             cyl_wise_end['faultDescrHat'] = fault_cats
+        #             cyl_wise_end['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
                     
-                    cyl_wise_end['subName'] = me1_faults[me1_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
-                    if fault_cats != 'Injection System':
-                        tt = me1_faults[(me1_faults['Fault_cat']==fault_cats)&(me1_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
-                        cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
-                        cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
-                        cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
-                    else:    
-                        tt = me1_faults[(me1_faults['Fault_cat']==fault_cats)&(me1_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.1'))]#+engs_cyl.split('_')[1].strip()))]
-                        cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
-                        cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
-                        cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
-                if engs == 'Engine_2':
-                    
-                    cyl_wise_end['subName'] = me2_faults[me2_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
-                    if fault_cats != 'Injection System':
-                        tt = me2_faults[(me2_faults['Fault_cat']==fault_cats)&(me2_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
-                        cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
-                        cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
-                        cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])  
-                    else:    
-                        tt = me2_faults[(me2_faults['Fault_cat']==fault_cats)&(me2_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.1'))]#+engs_cyl.split('_')[1].strip()))]
-                        cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
-                        cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
-                        cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0]) 
-                if trigger == True:
-                    cyl_wise_end['ratingLevelHat'] = 0
+        #             if engs == 'Engine_1':
+                        
+        #                 cyl_wise_end['subName'] = me1_faults[me1_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
+        #                 if fault_cats != 'Injection System':
+        #                     tt = me1_faults[(me1_faults['Fault_cat']==fault_cats)&(me1_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
+        #                     cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+        #                     cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+        #                     cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
+        #                 else:    
+        #                     tt = me1_faults[(me1_faults['Fault_cat']==fault_cats)&(me1_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.1'))]#+engs_cyl.split('_')[1].strip()))]
+        #                     cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+        #                     cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+        #                     cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
+        #             if engs == 'Engine_2':
+                        
+        #                 cyl_wise_end['subName'] = me2_faults[me2_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
+        #                 if fault_cats != 'Injection System':
+        #                     tt = me2_faults[(me2_faults['Fault_cat']==fault_cats)&(me2_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
+        #                     cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+        #                     cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+        #                     cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])  
+        #                 else:    
+        #                     tt = me2_faults[(me2_faults['Fault_cat']==fault_cats)&(me2_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.1'))]#+engs_cyl.split('_')[1].strip()))]
+        #                     cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+        #                     cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+        #                     cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0]) 
+        #             if trigger == True:
+        #                 cyl_wise_end['ratingLevelHat'] = 0
+        #             else:
+        #                 if int(id_max)==0: 
+        #                     cyl_wise_end['ratingLevelHat'] = 1
+        #                 else:    
+        #                     cyl_wise_end['ratingLevelHat'] = int(id_max) 
+        #             cyl_wise_end['findRecom'] = fault_cat[fault_cats]
+        #             api_format['surveys'].append(cyl_wise_end)  
+        api_format = {'totalRecords':0,'surveys':[]}
+        measured_date = list(end_point_result['Engine_data']['Engine_1']['Cyl_1'].keys())[0]#datetime.fromtimestamp(max(epochss)).strftime('%Y-%m-%d %H:%M:%S')
+        upload_date  = datetime.now().strftime("%Y-%m-%d")
+        me1_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME1_filt')
+        me2_faults = pd.read_excel('MuLAN Details.xlsx',sheet_name='ME2_filt')
+        def exists_consecutively(lst, element):
+            count = 0
+            for i in lst:
+                if i == element:
+                    count += 1
+                    if count == 10:
+                        return True
                 else:
-                    if int(id_max)==0: 
-                        cyl_wise_end['ratingLevelHat'] = 1
-                    else:    
-                        cyl_wise_end['ratingLevelHat'] = int(id_max) 
-                cyl_wise_end['findRecom'] = fault_cat[fault_cats]
-                api_format['surveys'].append(cyl_wise_end)  
-    return api_format
+                    count = 0
+            return False
+        for fault_cats in utility_dict['Fault_cats_ids'].keys():#['Combustion Blow-by','Injection System','Start of Inj','Exhaust Valve']: 
+                
+            for engs in end_point_result['Engine_data'].keys():
+                for engs_cyl in end_point_result['Engine_data'][engs].keys():
+                    cyl_wise_end = {} 
+                    f1 = pd.DataFrame(end_point_result['Engine_data'][engs][engs_cyl],index=['finding']).T
+                    fault_cat = {}
+                    fault_cat['Blow-by in combustion chamber'] = {}
+                    fault_cat['Injection System Fault'] = {}
+                    fault_cat['Start of Injection Fault'] = {}
+                    fault_cat['Exhaust Valve Fault'] = {}
+                    for fids in f1.index:
+                        for fids2 in f1.loc[fids,'finding'].split('||'):
+                            if 'Injection system fault' in fids2:
+                                fault_cat['Injection System Fault'].update({fids:fids2}) #'Combustion Blow-by
+                            if 'Start of injection' in fids2:
+                                fault_cat['Start of Injection Fault'].update({fids:fids2})
+                            if 'Exhaust valve' in fids2:
+                                # fault_cat['Exhaust Valve'].update({fids:fids2})  
+                                try:
+                                    fault_cat['Exhaust Valve Fault'][fids]+='||'+fids2
+                                except:
+                                    fault_cat['Exhaust Valve Fault'].update({fids:fids2}) 
+                            if 'Blow-by in combustion chamber' in fids2:
+                                fault_cat['Blow-by in combustion chamber'].update({fids:fids2})
+                    ll = pd.DataFrame(fault_cat[fault_cats],index=['findings']).T
+                    ll['Date'] = list(map(lambda x:x.split(' ')[0],ll.index))
+                    new_f = pd.DataFrame()
+                    for llids in ll['Date'].unique():
+                        sub_count = {}
+                        sub_count['3'] = len(ll[ll['Date']==llids].loc[ll[ll['Date']==llids]['findings'].str.contains(r'\(3\)')]['findings'])
+                        sub_count['2'] = len(ll[ll['Date']==llids].loc[ll[ll['Date']==llids]['findings'].str.contains(r'\(2\)')]['findings'])
+                        sub_count['1'] = len(ll[ll['Date']==llids].loc[ll[ll['Date']==llids]['findings'].str.contains(r'\(1\)')]['findings'])
+                        sub_count['0'] = len(ll[ll['Date']==llids].loc[ll[ll['Date']==llids]['findings'].str.contains(r'\(0\)')]['findings'])
+                        new_f_sub = list(dict(sorted(sub_count.items(),key=lambda x:x[1],reverse=True)).keys())[0]    
+                        # print('new_f_sub -',new_f_sub)
+                        new_f = pd.concat([new_f,pd.DataFrame({'fault_status':new_f_sub},index=[llids])])
+                    # if ('Blow-by in combustion chamber' == fault_cats)&(engs_cyl=='Cyl_5'):
+                    # if 'Blow-by in combustion chamber' == fault_cats:
+                    #     new_f['fault_status'] = '0'
+                    trigger = exists_consecutively(new_f['fault_status'],'0')
+                    if trigger == True:
+                        upload_date  = datetime.now().strftime("%Y-%m-%d")
+                        measured_date = list(end_point_result['Engine_data']['Engine_1']['Cyl_1'].keys())[0]
+                        cyl_wise_end['id'] = pdm_inputs1['filter']['id']
+                        cyl_wise_end['uploadDate'] = upload_date
+                        cyl_wise_end['measureDate'] = measured_date
+                        cyl_wise_end['faultIdHat'] = utility_dict['Fault_cats_ids'][fault_cats]
+                        cyl_wise_end['faultDescrHat'] = fault_cats
+                        cyl_wise_end['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
+                        if engs == 'Engine_1':   
+                            cyl_wise_end['subName'] = me1_faults[me1_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
+                            if fault_cats != 'Injection System Fault':
+                                tt = me1_faults[(me1_faults['Fault_cat']==fault_cats)&(me1_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
+                                cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+                                cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+                                cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
+                            else:    
+                                tt = me1_faults[(me1_faults['Fault_cat']==fault_cats)&(me1_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.1'))]#+engs_cyl.split('_')[1].strip()))]
+                                cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+                                cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+                                cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
+                        if engs == 'Engine_2':
+                            
+                            cyl_wise_end['subName'] = me2_faults[me2_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
+                            if fault_cats != 'Injection System Fault':
+                                tt = me2_faults[(me2_faults['Fault_cat']==fault_cats)&(me2_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
+                                cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+                                cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+                                cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])  
+                            else:    
+                                tt = me2_faults[(me2_faults['Fault_cat']==fault_cats)&(me2_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.1'))]#+engs_cyl.split('_')[1].strip()))]
+                                cyl_wise_end['sysCustom_1'] = tt['EquipmentCode'].values[0]
+                                cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
+                                cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
+
+                        cyl_wise_end['ratingLevelHat'] = 0
+                        recc = ','.join(utility_dict['faults_recom_API'][utility_dict['Ftype']][fault_cats])
+                        cyl_wise_end['findRecom'] = r"(0)({})-{}-{}".format(utility_dict['Fault_cats_ids'][fault_cats],fault_cats,recc)
+                        api_format['surveys'].append(cyl_wise_end)
+        def remove_duplicate_dicts1(lst):
+            seen = []
+            unique_dicts = []
+            for d in lst:
+                # Convert dictionary to a hashable type (e.g., tuple of sorted items)
+                if d['sysCustom_1'] in seen:
+                    pass
+                else:
+                    seen.append(d['sysCustom_1'])
+                    unique_dicts.append(d)
+            return unique_dicts
+        dn = remove_duplicate_dicts1(api_format['surveys']) 
+        api_format2 = {'surveys':[]}
+        #'Start of Injection Fault'
+        for kids in dn:#api_format['surveys']:
+            #Start of Injection Fault
+            #eng1
+            ch_df = me1_faults[(me1_faults['Fault_cat']=='Start of Injection Fault')&(me1_faults['EquipmentCode'].str.contains('.'.join(kids['sysCustom_1'].split('.')[:-1])))]
+            if len(ch_df)>=1:
+                ch_list = ch_df['EquipmentCode'].to_list()
+                ch_list.remove(kids['sysCustom_1'])
+                for eles in ch_list:
+                    api_format2['surveys'].append({'id': kids['id'],
+                    'uploadDate': kids['uploadDate'],
+                    'measureDate': kids['measureDate'],
+                    'faultIdHat': kids['faultIdHat'],
+                    'faultDescrHat': kids['faultDescrHat'],
+                    'shipCustom_1': kids['shipCustom_1'],
+                    'subName': kids['subName'],
+                    'sysCustom_1': eles,
+                    'sysCustom_2': ch_df[ch_df['EquipmentCode']==eles]['EQUIPMENT_ID'].values[0],
+                    'sysCustom_3': ch_df[ch_df['EquipmentCode']==eles]['Job_Plan_ID'].values[0],
+                    'ratingLevelHat': kids['ratingLevelHat'],
+                    'findRecom': kids['findRecom']})
+
+            #eng2  
+            ch_df2 = me2_faults[(me2_faults['Fault_cat']=='Start of Injection Fault')&(me2_faults['EquipmentCode'].str.contains('.'.join(kids['sysCustom_1'].split('.')[:-1])))]     
+            if len(ch_df2)>=1:
+                ch_list2 = ch_df2['EquipmentCode'].to_list()
+                ch_list2.remove(kids['sysCustom_1'])
+                for eles2 in ch_list2:
+                    api_format2['surveys'].append({'id': kids['id'],
+                    'uploadDate': kids['uploadDate'],
+                    'measureDate': kids['measureDate'],
+                    'faultIdHat': kids['faultIdHat'],
+                    'faultDescrHat': kids['faultDescrHat'],
+                    'shipCustom_1': kids['shipCustom_1'],
+                    'subName': kids['subName'],
+                    'sysCustom_1': eles2,
+                    'sysCustom_2': ch_df2[ch_df2['EquipmentCode']==eles2]['EQUIPMENT_ID'].values[0],
+                    'sysCustom_3': ch_df2[ch_df2['EquipmentCode']==eles2]['Job_Plan_ID'].values[0],
+                    'ratingLevelHat': kids['ratingLevelHat'],
+                    'findRecom': kids['findRecom']})
+            #Injection System Fault
+            # eng1    
+            ch_df3 = me1_faults[(me1_faults['Fault_cat']=='Injection System Fault')&(me1_faults['EquipmentCode'].str.contains('.'.join(kids['sysCustom_1'].split('.')[:-1])))]    
+            if len(ch_df3)>=1:
+                ch_list3 = ch_df3['EquipmentCode'].to_list()
+                ch_list3.remove(kids['sysCustom_1'])
+                for eles3 in ch_list3:
+                    api_format2['surveys'].append({'id': kids['id'],
+                    'uploadDate': kids['uploadDate'],
+                    'measureDate': kids['measureDate'],
+                    'faultIdHat': kids['faultIdHat'],
+                    'faultDescrHat': kids['faultDescrHat'],
+                    'shipCustom_1': kids['shipCustom_1'],
+                    'subName': kids['subName'],
+                    'sysCustom_1': eles3,
+                    'sysCustom_2': ch_df3[ch_df3['EquipmentCode']==eles3]['EQUIPMENT_ID'].values[0],
+                    'sysCustom_3': ch_df3[ch_df3['EquipmentCode']==eles3]['Job_Plan_ID'].values[0],
+                    'ratingLevelHat': kids['ratingLevelHat'],
+                    'findRecom': kids['findRecom']})
+            #eng2  
+            ch_df4 = me2_faults[(me2_faults['Fault_cat']=='Injection System Fault')&(me2_faults['EquipmentCode'].str.contains('.'.join(kids['sysCustom_1'].split('.')[:-1])))]             
+            if len(ch_df4)>=1:
+                ch_list4 = ch_df4['EquipmentCode'].to_list()
+                ch_list4.remove(kids['sysCustom_1'])
+                for eles4 in ch_list4:
+                    api_format2['surveys'].append({'id': kids['id'],
+                    'uploadDate': kids['uploadDate'],
+                    'measureDate': kids['measureDate'],
+                    'faultIdHat': kids['faultIdHat'],
+                    'faultDescrHat': kids['faultDescrHat'],
+                    'shipCustom_1': kids['shipCustom_1'],
+                    'subName': kids['subName'],
+                    'sysCustom_1': eles4,
+                    'sysCustom_2': ch_df4[ch_df4['EquipmentCode']==eles4]['EQUIPMENT_ID'].values[0],
+                    'sysCustom_3': ch_df4[ch_df4['EquipmentCode']==eles4]['Job_Plan_ID'].values[0],
+                    'ratingLevelHat': kids['ratingLevelHat'],
+                    'findRecom': kids['findRecom']})
+        new_list = []
+        new_list.extend(dn)
+        if len(api_format2['surveys'])!=0:
+            new_list.extend(api_format2['surveys']) 
+        api_format['surveys'] = new_list  
+        if len(api_format['surveys']) == 0:
+            print('Faults not found')
+            return {}        
+        else:
+            api_format['totalRecords'] = len(api_format['surveys'])  
+            return {'status':200,'data':api_format}        
+    except:
+        print('result file not found')
+        return {}         

@@ -206,7 +206,9 @@ faults_recom:
     Exhaust valve early opening : ['Check exhaust valve timing mechanism']
     Exhaust valve late opening : ['Check exhaust valve timing mechanism']
     Exhaust valve early closure : ['Check exhaust valve timing mechanism']
-    Exhaust valve late closure : ['Check exhaust valve timing mechanism']  
+    Exhaust valve late closure : ['Check exhaust valve timing mechanism'] 
+
+
 
 # Fault_ids:
 #   InjSysFault: ['201','Injection system fault']
@@ -242,11 +244,34 @@ rating_level2:
   '1': 'Marginal'
   '0': 'Unacceptable'
 
+# Fault_cats_ids:
+#   Injection System: '201' 
+#   Start of Inj: '202'
+#   Exhaust Valve: '203'
+#   Combustion Blow-by: '204' 
+
 Fault_cats_ids:
-  Injection System: '201' 
-  Start of Inj: '202'
-  Exhaust Valve: '203'
-  Combustion Blow-by: '204' 
+  Injection System Fault: '201' 
+  Start of Injection Fault: '202'
+  Exhaust Valve Fault: '203'
+  Blow-by in combustion chamber: '204'
+
+faults_recom_API:
+  CD:
+    Injection System Fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
+    Start of Injection Fault : ['Check VIT system']
+    Exhaust Valve Fault : ['Check exhaust valve/seat condition','Check exhaust valve timing mechanism','Check camshaft condition']
+    Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
+  ED:
+    Injection System Fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
+    Start of Injection Fault : ['Check VIT system']
+    Exhaust Valve Fault : ['Check exhaust valve/seat condition','Check exhaust valve timing mechanism','Check camshaft condition']
+    Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
+  DF:
+    Injection System Fault : ['Check fuel quality','Check fuel pumps','Check injectors','Check fuel injection pressure']
+    Start of Injection Fault : ['Check VIT system']
+    Exhaust Valve Fault : ['Check exhaust valve/seat condition','Check exhaust valve timing mechanism','Check camshaft condition']
+    Blow-by in combustion chamber : ['Check piston rings condition','Check cylinder liner condition','Check piston crown condition']
 
 
 Data_api:

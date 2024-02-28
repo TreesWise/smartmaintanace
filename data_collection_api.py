@@ -78,14 +78,17 @@ class api_data_collection():
                 df = pd.DataFrame(data.json()['response']).T
                 df = df.rename(columns=col_dict) 
                 df.index = pd.to_datetime(df.index) 
+                df = df.loc[df.index<=to_date]
                 # ME table  
                 df1 = pd.DataFrame(data1.json()['response']).T
                 df1 = df1.rename(columns=col_dict)
                 df1.index = pd.to_datetime(df1.index)
+                df1 = df1.loc[df1.index<=to_date]
                 # Diesel mode
                 df2 = pd.DataFrame(data2.json()['response']).T
                 df2 = df2.rename(columns={'P669':'Diesel Model Active'})
                 df2.index = pd.to_datetime(df2.index)
+                df2 = df2.loc[df2.index<=to_date]
                 #combining all tables data
                 df = df.resample('1Min').bfill().ffill()
                 df = pd.concat([df,df1,df2],axis=1)
@@ -111,5 +114,6 @@ class api_data_collection():
         full_df.reset_index(names='signaldate',inplace=True)
         full_df.sort_values(by='signaldate',ascending=True,inplace=True)
         full_df.set_index(full_df['signaldate'],inplace=True)
-        full_df.drop(columns=['signaldate'],inplace=True)       
+        full_df.drop(columns=['signaldate'],inplace=True)    
+        full_df = full_df.loc[full_df.index<=to_date]   
         return full_df #this will be hourly data data with all engine loads          

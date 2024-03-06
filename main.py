@@ -337,6 +337,7 @@ async def forecast_14days(current_user: User = Depends(get_current_active_user))
             rating['ExhValLatClos'] = str(utility_dict['rating_level']['80-100'][1])         
         return rating     
 
+
 # cv = rating_level(list(df.iterrows())[0][1])         
 
     output_format_mapping = {'Vessel_info':{'Vessel_Name':utility_dict['Vessel_name'],'VESSEL_OBJECT_ID':utility_dict['VESSEL_OBJECT_ID'],

@@ -180,7 +180,7 @@ class api_data_collection():
                 
                     print(df.shape)  
                 else:
-                    print('No Diesel data')
+                    print('No Diesel data',to_date)
                     df = pd.DataFrame()    
                     with open('data_collection_history.pickle','rb') as h_file: #for updating recent date of data collection
                         data_collection_hist = pickle.load(h_file)     

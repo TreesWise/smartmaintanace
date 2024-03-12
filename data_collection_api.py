@@ -3,6 +3,8 @@ import re
 import pandas as pd
 import requests
 import pickle
+import yaml   
+from azure.storage.blob import ContainerClient
 
 
 # class api_data_collection():
@@ -76,6 +78,10 @@ class api_data_collection():
         #col_dict - column names and ids dict for mapping
         cur_date = datetime.now()-timedelta(days=1)
         full_df = pd.DataFrame()
+        with open('cbm_yaml.yml','r') as file:
+            utility_dict = yaml.safe_load(file)
+        container_client = ContainerClient.from_connection_string(
+        utility_dict['connection_string'], container_name=utility_dict['container_name'])
         for dayy in range(1,self.number_days+1):
             chck_date = cur_date-timedelta(days=self.number_days-dayy)   
             # from_date = str(chck_date.year)+'-'+str(chck_date.month)+'-'+str(chck_date.day)+' 00:00:00'
@@ -122,25 +128,27 @@ class api_data_collection():
                             df.loc[i,pat.pattern.replace('\\','')+'_mean'] = df.loc[i,matches].mean()
                             df.loc[i,pat.pattern.replace('\\','')+'_min'] = df.loc[i,matches].min()
                             df.loc[i,pat.pattern.replace('\\','')+'_max'] = df.loc[i,matches].max()
-                    with open('data_collection_history.pickle','rb') as h_file: #for updating recent date of data collection
-                        data_collection_hist = pickle.load(h_file)     
-
-                    data_collection_hist['Last_run_date'] = to_date.split(' ')[0]
                     
-                    with open('data_collection_history.pickle','wb') as h_file:
-                        pickle.dump(data_collection_hist,h_file)
+                    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/data_collection_history.pickle')
+                    pickled_data = blob_client.download_blob().readall()
+                    data_collection_hist = pickle.loads(pickled_data) 
+                    data_collection_hist['Last_run_date_eng_'+table.split('_')[1]] = to_date.split(' ')[0]     
+                    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/data_collection_history.pickle')
+                    output_format_mapping_bytes = pickle.dumps(data_collection_hist)
+                    blob_client.upload_blob(output_format_mapping_bytes,overwrite=True)   
                 
                     print(df.shape)  
                 else:
                     print('No Diesel data',to_date)
                     df = pd.DataFrame()    
-                    with open('data_collection_history.pickle','rb') as h_file: #for updating recent date of data collection
-                        data_collection_hist = pickle.load(h_file)     
-
-                    data_collection_hist['Last_run_date'] = to_date.split(' ')[0]
-
-                    with open('data_collection_history.pickle','wb') as h_file:
-                        pickle.dump(data_collection_hist,h_file)
+                    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/data_collection_history.pickle')
+                    pickled_data = blob_client.download_blob().readall()
+                    data_collection_hist = pickle.loads(pickled_data) 
+                    data_collection_hist['Last_run_date_eng_'+table.split('_')[1]] = to_date.split(' ')[0]     
+                    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/data_collection_history.pickle')
+                    output_format_mapping_bytes = pickle.dumps(data_collection_hist)
+                    blob_client.upload_blob(output_format_mapping_bytes,overwrite=True)  
+                       
             except:
                 df = pd.DataFrame()
                 print('Got error while data preprocessing while data collection')

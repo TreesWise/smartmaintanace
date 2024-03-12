@@ -128,15 +128,16 @@ def read_data_from_blob(dataset_name,idx_col,container_client):
     data = pd.read_csv(StringIO(container_client.download_blob(dataset_name).content_as_text()),index_col=idx_col)
     return data
 
-def data_collect(utility_dict,dict1):
+def data_collect(utility_dict,dict1,eng):
     # scrap_data = wingd_scraper()
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
-    with open('data_collection_history.pickle','rb') as h_file:
-        data_collection_hist = pickle.load(h_file) 
+    blob_client = container_client.get_blob_client('Data/'+utility_dict['Vessel_name']+'/Results/data_collection_history.pickle')
+    pickled_data = blob_client.download_blob().readall()
+    data_collection_hist = pickle.loads(pickled_data) 
     cur_date = datetime.now()-timedelta(days=1)
     cur_run = datetime.strptime(cur_date.strftime('%Y-%m-%d'), "%Y-%m-%d")
-    last_run = datetime.strptime(data_collection_hist['Last_run_date'], "%Y-%m-%d")
+    last_run = datetime.strptime(data_collection_hist['Last_run_date_eng_'+str(eng)], "%Y-%m-%d") #Last_run_date
     days_to_run = (cur_run-last_run).days
     if days_to_run == 0:
         print('Dataset already updated')
@@ -167,13 +168,14 @@ def data_collect(utility_dict,dict1):
 
 @app.post("/forecast-14days")
 async def forecast_14days(current_user: User = Depends(get_current_active_user)):
-    data_collect(utility_dict,dict1)
+    # data_collect(utility_dict,dict1)
     container_client = ContainerClient.from_connection_string(
     utility_dict['connection_string'], container_name=utility_dict['container_name'])
     start_time = time.time()
     new_data_path = utility_dict['forecast_data_path']
     vessel_name = utility_dict['Vessel_name']
     for eng in range(1,int(utility_dict['engine_number'])+1):
+        data_collect(utility_dict,dict1,eng)
         data = data_preprocess('Data/'+vessel_name+'/Engine_'+str(eng)+'/Test/API_data_Test.csv',container_client)
         
 
@@ -447,14 +449,13 @@ async def smart_maintenance(userinput: pdm_inputs, current_user: User = Depends(
                     trigger = exists_consecutively(new_f['fault_status'],'0')
                     if trigger == True:
                         upload_date  = datetime.now().strftime("%Y-%m-%d")
-                        measured_date = list(end_point_result['Engine_data']['Engine_1']['Cyl_1'].keys())[0]
                         cyl_wise_end['id'] = pdm_inputs1['filter']['id']
-                        cyl_wise_end['uploadDate'] = upload_date
-                        cyl_wise_end['measureDate'] = measured_date
                         cyl_wise_end['faultIdHat'] = utility_dict['Fault_cats_ids'][fault_cats]
                         cyl_wise_end['faultDescrHat'] = fault_cats
                         cyl_wise_end['shipCustom_1'] = pdm_inputs1['filter']['shipCustom1'][0]
+                        cyl_wise_end['uploadDate'] = upload_date
                         if engs == 'Engine_1':   
+                            cyl_wise_end['measureDate'] = list(end_point_result['Engine_data'][engs]['Cyl_1'].keys())[0]
                             cyl_wise_end['subName'] = me1_faults[me1_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
                             if fault_cats != 'Injection System Fault':
                                 tt = me1_faults[(me1_faults['Fault_cat']==fault_cats)&(me1_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
@@ -467,7 +468,7 @@ async def smart_maintenance(userinput: pdm_inputs, current_user: User = Depends(
                                 cyl_wise_end['sysCustom_2'] = int(tt['EQUIPMENT_ID'].values[0])
                                 cyl_wise_end['sysCustom_3'] = int(tt['Job_Plan_ID'].values[0])
                         if engs == 'Engine_2':
-                            
+                            cyl_wise_end['measureDate'] = list(end_point_result['Engine_data'][engs]['Cyl_1'].keys())[0]
                             cyl_wise_end['subName'] = me2_faults[me2_faults['Fault_cat']==fault_cats]['Component1'].values[0].split('NO.')[0].strip()
                             if fault_cats != 'Injection System Fault':
                                 tt = me2_faults[(me2_faults['Fault_cat']==fault_cats)&(me2_faults['Component1'].str.contains(cyl_wise_end['subName']+' NO.'+engs_cyl.split('_')[1].strip()))]
@@ -584,6 +585,9 @@ async def smart_maintenance(userinput: pdm_inputs, current_user: User = Depends(
             return {}        
         else:
             api_format['totalRecords'] = len(api_format['surveys'])  
+            for survey in api_format['surveys']:
+                survey['sysCustom_2'] = int(survey['sysCustom_2'])
+                survey['sysCustom_3'] = int(survey['sysCustom_3'])
             return {'status':200,'data':api_format}        
     except:
         print('result file not found')
